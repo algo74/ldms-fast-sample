@@ -35,6 +35,8 @@ SUBDIRS += lustre_mdt
 SUBDIRS += lustre_ost
 SUBDIRS += lustre_mdc
 
+SUBDIRS += lustre_fulldump
+
 if HAVE_DCGM
 SUBDIRS += dcgm_sampler
 endif

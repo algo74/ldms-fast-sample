@@ -1028,6 +1028,7 @@ ldms/src/sampler/lustre/Makefile
 ldms/src/sampler/job_info/Makefile
 ldms/src/sampler/job_info_slurm/Makefile
 ldms/src/sampler/llnl/Makefile
+ldms/src/sampler/lustre_fulldump/Makefile
 ldms/src/sampler/lustre_client/Makefile
 ldms/src/sampler/lustre_mdt/Makefile
 ldms/src/sampler/lustre_ost/Makefile
