@@ -18,7 +18,15 @@
 #include "config.h"
 #include "lustre_fulldump.h"
 #include "lustre_fulldump_llite.h"
+#include "lustre_fulldump_lnet_peers.h"
+#include "lustre_fulldump_mdc_md_stats.h"
+#include "lustre_fulldump_mdc_rpc_stats.h"
+#include "lustre_fulldump_mdc_stats.h"
+#include "lustre_fulldump_mdc_timeouts.h"
+#include "lustre_fulldump_osc_rpc_stats.h"
 #include "lustre_fulldump_osc_stats.h"
+#include "lustre_fulldump_osc_timeouts.h"
+
 // #include "jobid_helper.h"
 
 #define _GNU_SOURCE
@@ -101,8 +109,23 @@ static int config(struct ldmsd_plugin *self,
   //TODO: configure sub-contexts
   int err = add_sub_ctxt(lustre_fulldump_llite_config);
   if (err) return err;
+  err = add_sub_ctxt(lustre_fulldump_lnet_peers_config);
+  if (err) return err;
+  err = add_sub_ctxt(lustre_fulldump_mdc_md_stats_config);
+  if (err) return err;
+  err = add_sub_ctxt(lustre_fulldump_mdc_rpc_stats_config);
+  if (err) return err;
+  err = add_sub_ctxt(lustre_fulldump_mdc_stats_config);
+  if (err) return err;
+  err = add_sub_ctxt(lustre_fulldump_mdc_timeouts_config);
+  if (err) return err;
+  err = add_sub_ctxt(lustre_fulldump_osc_rpc_stats_config);
+  if (err) return err;
   err = add_sub_ctxt(lustre_fulldump_osc_stats_config);
   if (err) return err;
+  err = add_sub_ctxt(lustre_fulldump_osc_timeouts_config);
+  if (err) return err;
+
 
   log_fn(LDMSD_LDEBUG, SAMP" config() all done\n");
   samp_ctxt.configured = true;

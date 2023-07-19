@@ -5,6 +5,16 @@
  *
  * SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
  */
+
+/**
+ * @file lustre_fulldump_xxc_general.h
+ * @brief Header file for lustre_fulldump_osc_general.c
+ * @details
+ * This file contains the declarations for the functions that are used
+ * by OSC sub-samplers and MDC samplers as well.
+ * TODO: so the name may be misleading.
+ */
+
 #ifndef __LUSTRE_FULLDUMP_OSC_GENERAL_H
 #define __LUSTRE_FULLDUMP_OSC_GENERAL_H
 
@@ -29,33 +39,34 @@
 // #define _GNU_SOURCE
 
 
-struct osc_extra {
+struct xxc_extra {
   struct rbt source_tree; /* red-black tree root for sources */
   char *source_category;  /* filename of the source */
 };
 
-struct osc_data {
+struct server_data {
   char *name;
   char *fs_name;
-  int ost_id;
+  int server_idx;
+  char *server_id;
   char *dir_path;
   char *file_path;
   ldms_set_t metric_set; /* a pointer */
   struct rbn tree_node;
 };
 
-int osc_extra_config(fulldump_sub_ctxt_p self, char *source_category);
+int server_extra_config(fulldump_sub_ctxt_p self, char *source_category);
 
-void osc_general_term(fulldump_sub_ctxt_p self);
+void server_general_term(fulldump_sub_ctxt_p self);
 
-void oscs_destroy(struct rbt *osc_tree);
+void servers_destroy(struct rbt *source_tree);
 
 /** List subdirectories to get all metric files.
  * Create data structures for any file that we
  * have not seen, and delete any that we no longer see.
  */
-int oscs_refresh(struct rbt *osc_tree, fulldump_sub_ctxt_p self, const char *path);
+int servers_refresh(struct rbt *source_tree, fulldump_sub_ctxt_p self, const char *path);
 
-void oscs_sample(struct osc_extra *osc_extra, int (*single_sample)(const char *, ldms_set_t));
+void servers_sample(struct xxc_extra *xxc_extra, int (*single_sample)(const char *, ldms_set_t));
 
 #endif /* __LUSTRE_FULLDUMP_OSC_GENERAL_H */

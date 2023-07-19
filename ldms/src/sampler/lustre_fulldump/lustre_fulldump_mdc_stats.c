@@ -15,6 +15,8 @@
 
 // #define _GNU_SOURCE
 
+#define SUB_SAMP "mdc_stats"
+
 #define MAXMETRICNAMESIZE 128
 #define MAXLISTSIZE 256
 
@@ -26,13 +28,7 @@
 #define PATH_MAX 4096
 #endif
 
-
-static const char *const paths[] = {
-    "/sys/kernel/debug/lustre/osc" /* lustre 2.12 and later */
-};
-static const int paths_len = sizeof(paths) / sizeof(paths[0]);
-static const char *current_path = "/sys/kernel/debug/lustre/osc"; // FIXME: this is a hack
-
+static const char *current_path = "/sys/kernel/debug/lustre/mdc";
 
 static struct ldms_metric_template_s schema_metric_record_templlate[] = {
     {"metric_name", 0, LDMS_V_CHAR_ARRAY, "", MAXMETRICNAMESIZE},
@@ -72,15 +68,15 @@ enum {
 };
 
 
-static int osc_stats_schema_init(fulldump_sub_ctxt_p self)
+static int local_schema_init(fulldump_sub_ctxt_p self)
 {
-  return fulldump_general_schema_init(self, "lustre_fulldump_osc_stats", schema_templlate, schema_ids,
+  return fulldump_general_schema_init(self, "lustre_fulldump_mdc_stats", schema_templlate, schema_ids,
                                       schema_metric_record_templlate, schema_metric_record_ids,
                                       METRIC_RECORD_ID, METRIC_LIST_ID, MAXLISTSIZE);
 }
 
 
-static int osc_stats_sample(const char *stats_path, ldms_set_t metric_set)
+static int local_sample(const char *stats_path, ldms_set_t metric_set)
 {
   FILE *sf;
   char buf[512];
@@ -91,17 +87,17 @@ static int osc_stats_sample(const char *stats_path, ldms_set_t metric_set)
   uint64_t val1, val2, val3, val4;
   int index;
 
-  log_fn(LDMSD_LDEBUG, SAMP ": %s: file %s\n", __func__, stats_path);
+  log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP " %s: file %s\n", __func__, stats_path);
 
   sf = fopen(stats_path, "r");
   if (sf == NULL) {
-    log_fn(LDMSD_LWARNING, SAMP "%s: file %s not found\n",
+    log_fn(LDMSD_LWARNING, SAMP " " SUB_SAMP " %s: file %s not found\n",
            __func__, stats_path);
     return ENOENT;
   }
   // reading the first line (snapshot_time)
   if (fgets(buf, sizeof(buf), sf) == NULL) {
-    log_fn(LDMSD_LWARNING, SAMP "%s: failed on read from %s\n",
+    log_fn(LDMSD_LWARNING, SAMP " " SUB_SAMP " %s: failed on read from %s\n",
            __func__, stats_path);
     err_code = ENOMSG;
     goto out1;
@@ -109,8 +105,8 @@ static int osc_stats_sample(const char *stats_path, ldms_set_t metric_set)
   // log_fn(LDMSD_LDEBUG, SAMP ": llite_stats_sample: buf: %500s\n", buf);
   rc = sscanf(buf, "%64s %lu.%lu", str1, &val1, &val2);
   if (rc != 3 || strncmp(str1, "snapshot_time", MAXNAMESIZE) != 0) {
-    log_fn(LDMSD_LWARNING, SAMP ": first line in %s is not \"snapshot_time\": %.512s\n",
-           stats_path, buf);
+    log_fn(LDMSD_LWARNING, SAMP " " SUB_SAMP " %s: first line in %s is not \"snapshot_time\": %.512s\n",
+           __func__, stats_path, buf);
     err_code = ENOMSG;
     goto out1;
   }
@@ -129,8 +125,8 @@ static int osc_stats_sample(const char *stats_path, ldms_set_t metric_set)
     } else if (rc == 3) {
       val3 = 0;
     } else if (rc != 4) {
-      log_fn(LDMSD_LWARNING, SAMP ": failed to parse line in %s: %s\n",
-             stats_path, buf);
+      log_fn(LDMSD_LWARNING, SAMP " " SUB_SAMP " %s : failed to parse line in %s: %s\n",
+             __func__, stats_path, buf);
       err_code = ENOMSG;
       goto out2;
     }
@@ -157,12 +153,12 @@ out1:
 
 static int sample(fulldump_sub_ctxt_p self)
 {
-  log_fn(LDMSD_LDEBUG, SAMP " %s() called\n", __func__);
+  log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP " %s() called\n", __func__);
   struct xxc_extra *extra = self->extra;
   if (self->schema == NULL) {
-    log_fn(LDMSD_LDEBUG, SAMP " %s: calling schema init\n", __func__);
-    if (osc_stats_schema_init(self) < 0) {
-      log_fn(LDMSD_LERROR, SAMP " %s general schema create failed\n", __func__);
+    log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP " %s: calling schema init\n", __func__);
+    if (local_schema_init(self) < 0) {
+      log_fn(LDMSD_LERROR, SAMP " " SUB_SAMP " %s general schema create failed\n", __func__);
       return ENOMEM;
 
     }
@@ -172,17 +168,17 @@ static int sample(fulldump_sub_ctxt_p self)
   //   log_fn(LDMSD_LWARNING, SAMP " %s: no path found\n", __func__);
   //   return 0;
   // };
-  log_fn(LDMSD_LDEBUG, SAMP " %s calling refresh\n", __func__);
+  log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP " %s calling refresh\n", __func__);
   int err = servers_refresh(&extra->source_tree, self, current_path);
   if (err) /* running out of set memory is an error */
     return err;
 
-  servers_sample(extra, osc_stats_sample);
+  servers_sample(extra, local_sample);
   return 0;
 }
 
 
-int lustre_fulldump_osc_stats_config(fulldump_sub_ctxt_p self)
+int lustre_fulldump_mdc_stats_config(fulldump_sub_ctxt_p self)
 {
   self->sample = (int (*)(void *self)) sample;
   self->term = (int (*)(void *self)) server_general_term;

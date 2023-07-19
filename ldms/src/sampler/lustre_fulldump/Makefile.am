@@ -1,14 +1,32 @@
 liblustre_fulldump_la_SOURCES = \
-        lustre_fulldump.c \
+				high_freq_sampler.c \
+				high_freq_sampler.h \
 				lustre_fulldump_general.c \
-				lustre_fulldump_osc_general.c \
-				lustre_fulldump_osc_stats.c \
-        lustre_fulldump_llite.c \
-        lustre_fulldump.h \
 				lustre_fulldump_general.h \
-				lustre_fulldump_osc_general.h \
+        lustre_fulldump_llite.c \
+        lustre_fulldump_llite.h \
+        lustre_fulldump_lnet_peers.c \
+        lustre_fulldump_lnet_peers.h \
+				lustre_fulldump_mdc_md_stats.c \
+				lustre_fulldump_mdc_md_stats.h \
+				lustre_fulldump_mdc_rpc_stats.c \
+				lustre_fulldump_mdc_rpc_stats.h \
+				lustre_fulldump_mdc_stats.c \
+				lustre_fulldump_mdc_stats.h \
+				lustre_fulldump_mdc_timeouts.c \
+				lustre_fulldump_mdc_timeouts.h \
+				lustre_fulldump_osc_rpc_stats.c \
+				lustre_fulldump_osc_rpc_stats.h \
+				lustre_fulldump_osc_stats.c \
 				lustre_fulldump_osc_stats.h \
-        lustre_fulldump_llite.h
+				lustre_fulldump_osc_timeouts.c \
+				lustre_fulldump_osc_timeouts.h \
+				lustre_fulldump_xxc_general.c \
+				lustre_fulldump_xxc_general.h \
+				lustre_fulldump_xxc_hf_hist.c \
+				lustre_fulldump_xxc_hf_hist.h \
+        lustre_fulldump.c \
+        lustre_fulldump.h
 liblustre_fulldump_la_LIBADD = \
 	$(top_builddir)/ldms/src/core/libldms.la \
 	$(top_builddir)/lib/src/coll/libcoll.la \

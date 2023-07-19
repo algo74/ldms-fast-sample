@@ -119,8 +119,8 @@ ldms_set_t llite_set_create(ldmsd_msg_log_f log_fn,
   char instance_name[LDMS_PRODUCER_NAME_MAX + 64];
 
   log_fn(LDMSD_LDEBUG, SAMP ": llite_set_create()\n");
-  snprintf(instance_name, sizeof(instance_name), "%s/%s",
-           producer_name, fs_name);
+  snprintf(instance_name, sizeof(instance_name), "%s/%s/%s/llite_stats",
+           producer_name, SAMP, fs_name);
   set = fulldump_general_create_set(log_fn, producer_name, instance_name, auth, cid, schema);
   if (!set) {
     return NULL;

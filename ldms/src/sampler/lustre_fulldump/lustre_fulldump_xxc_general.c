@@ -22,6 +22,7 @@
 // #include "ldmsd.h"
 #include "lustre_fulldump.h"
 #include "lustre_fulldump_general.h"
+#include "lustre_fulldump_xxc_general.h"
 
 // #define _GNU_SOURCE
 
@@ -35,32 +36,16 @@
 #endif
 
 
-struct osc_extra {
-  struct rbt source_tree; /* red-black tree root for sources */
-  char *source_category;  /* filename of the source */
-};
-
-struct osc_data {
-  char *name;
-  char *fs_name;
-  int ost_id;
-  char *dir_path;
-  char *file_path;
-  ldms_set_t metric_set; /* a pointer */
-  struct rbn tree_node;
-};
-
-
 static int string_comparator(void *a, const void *b)
 {
   return strcmp((char *)a, (char *)b);
 }
 
 
-int osc_extra_config(fulldump_sub_ctxt_p self, char *source_category)
+int server_extra_config(fulldump_sub_ctxt_p self, char *source_category)
 {
   log_fn(LDMSD_LDEBUG, SAMP " %s config() called\n", __func__);
-  struct osc_extra *extra = malloc(sizeof(struct osc_extra));
+  struct xxc_extra *extra = malloc(sizeof(struct xxc_extra));
   if (extra == NULL) {
     log_fn(LDMSD_LERROR, SAMP " %s: out of memory\n", __func__);
     return ENOMEM;
@@ -73,17 +58,17 @@ int osc_extra_config(fulldump_sub_ctxt_p self, char *source_category)
 }
 
 
-static ldms_set_t osc_set_create(fulldump_sub_ctxt_p self, struct osc_data *osc)
+static ldms_set_t _set_create(fulldump_sub_ctxt_p self, struct server_data *server)
 {
   ldms_set_t set;
   int index;
   char instance_name[LDMS_PRODUCER_NAME_MAX + 64];
 
   log_fn(LDMSD_LDEBUG, SAMP ": %s()\n", __func__);
-  struct osc_extra *extra = self->extra;
+  struct xxc_extra *extra = self->extra;
   char *category = extra->source_category;
-  snprintf(instance_name, sizeof(instance_name), "%s/%s/OST%d/%s",
-           self->sampl_ctxt_p->producer_name, osc->fs_name, osc->ost_id, category);
+  snprintf(instance_name, sizeof(instance_name), "%s/%s/%s/%s/%s",
+           self->sampl_ctxt_p->producer_name, SAMP, server->fs_name, server->server_id, category);
   set = fulldump_general_create_set(log_fn, self->sampl_ctxt_p->producer_name, instance_name, &self->sampl_ctxt_p->auth, &self->cid, self->schema);
   if (!set) {
     return NULL;
@@ -93,96 +78,96 @@ static ldms_set_t osc_set_create(fulldump_sub_ctxt_p self, struct osc_data *osc)
     log_fn(LDMSD_LWARNING, SAMP " %s: unable to find field \"fs_name\" in schema %s - field not set\n",
            __func__, ldms_set_schema_name_get(set));
   } else {
-    ldms_metric_array_set_str(set, index, osc->fs_name);
+    ldms_metric_array_set_str(set, index, server->fs_name);
   }
-  index = ldms_metric_by_name(set, "ost_id");
+  index = ldms_metric_by_name(set, "server_idx");
   if (-1 == index) {
-    log_fn(LDMSD_LWARNING, SAMP " %s: unable to find field \"ost_id\" in schema %s - field not set\n",
+    log_fn(LDMSD_LWARNING, SAMP " %s: unable to find field \"server_idx\" in schema %s - field not set\n",
            __func__, ldms_set_schema_name_get(set));
   } else {
-    ldms_metric_set_u64(set, index, osc->ost_id);
+    ldms_metric_set_u64(set, index, server->server_idx);
   }
   return set;
 }
 
 
-static struct osc_data *osc_create(const char *osc_dir, const char *basedir, fulldump_sub_ctxt_p self)
+static struct server_data *_server_create(const char *server_dir, const char *basedir, fulldump_sub_ctxt_p self)
 {
-  struct osc_data *osc;
+  struct server_data *server;
   char path_tmp[PATH_MAX];
   char *state;
 
   log_fn(LDMSD_LDEBUG, SAMP " %s() %s from %s\n",
-         __func__, osc_dir, basedir);
-  osc = calloc(1, sizeof(*osc));
-  if (osc == NULL)
+         __func__, server_dir, basedir);
+  server = calloc(1, sizeof(*server));
+  if (server == NULL)
     goto out1;
 
-  osc->name = strdup(osc_dir);
-  if (osc->name == NULL)
+  server->name = strdup(server_dir);
+  if (server->name == NULL)
     goto out2;
 
-  snprintf(path_tmp, PATH_MAX, "%s/%s", basedir, osc_dir);
-  osc->dir_path = strdup(path_tmp);
-  if (osc->dir_path == NULL)
+  snprintf(path_tmp, PATH_MAX, "%s/%s", basedir, server_dir);
+  server->dir_path = strdup(path_tmp);
+  if (server->dir_path == NULL)
     goto out3;
 
-  struct osc_extra *extra = self->extra;
-  snprintf(path_tmp, PATH_MAX, "%s/%s", osc->dir_path, extra->source_category);
-  osc->file_path = strdup(path_tmp);
-  if (osc->file_path == NULL)
+  struct xxc_extra *extra = self->extra;
+  snprintf(path_tmp, PATH_MAX, "%s/%s", server->dir_path, extra->source_category);
+  server->file_path = strdup(path_tmp);
+  if (server->file_path == NULL)
     goto out4;
 
-  int rc = fulldump_split_osc_name(osc->name, &osc->fs_name, &osc->ost_id);
+  int rc = fulldump_split_server_name(server->name, &server->fs_name, &server->server_idx, &server->server_id);
   if (rc != 3) {
-    log_fn(LDMSD_LWARNING, SAMP "%s: unable to parse OSC name \"%s\"; return code=%d\n",
-           __func__, osc->name, rc);
+    log_fn(LDMSD_LWARNING, SAMP "%s: unable to parse server name \"%s\"; return code=%d\n",
+           __func__, server->name, rc);
     goto out5;
   }
 
-  osc->metric_set = osc_set_create(self, osc);
-  if (osc->metric_set == NULL)
+  server->metric_set = _set_create(self, server);
+  if (server->metric_set == NULL)
     goto out6;
-  rbn_init(&osc->tree_node, osc->name);
-  return osc;
+  rbn_init(&server->tree_node, server->name);
+  return server;
 
 out6:
-  free(osc->fs_name);
+  free(server->fs_name);
 out5:
-  free(osc->file_path);
+  free(server->file_path);
 out4:
-  free(osc->dir_path);
+  free(server->dir_path);
 out3:
-  free(osc->name);
+  free(server->name);
 out2:
-  free(osc);
+  free(server);
 out1:
   return NULL;
 }
 
 
-static void osc_destroy(struct osc_data *osc)
+static void _server_destroy(struct server_data *server)
 {
-  log_fn(LDMSD_LDEBUG, SAMP " osc_destroy() %s\n", osc->name);
-  fulldump_general_destroy_set(osc->metric_set);
-  free(osc->fs_name);
-  free(osc->file_path);
-  free(osc->dir_path);
-  free(osc->name);
-  free(osc);
+  log_fn(LDMSD_LDEBUG, SAMP " %s() %s\n", __func__, server->name);
+  fulldump_general_destroy_set(server->metric_set);
+  free(server->fs_name);
+  free(server->file_path);
+  free(server->dir_path);
+  free(server->name);
+  free(server);
 }
 
 
-void oscs_destroy(struct rbt *osc_tree)
+void servers_destroy(struct rbt *source_tree)
 {
   struct rbn *rbn;
-  struct osc_data *osc;
+  struct server_data *server;
 
-  while (!rbt_empty(osc_tree)) {
-    rbn = rbt_min(osc_tree);
-    osc = container_of(rbn, struct osc_data, tree_node);
-    rbt_del(osc_tree, rbn);
-    osc_destroy(osc);
+  while (!rbt_empty(source_tree)) {
+    rbn = rbt_min(source_tree);
+    server = container_of(rbn, struct server_data, tree_node);
+    rbt_del(source_tree, rbn);
+    _server_destroy(server);
   }
 }
 
@@ -191,7 +176,7 @@ void oscs_destroy(struct rbt *osc_tree)
  * Create data structures for any file that we
  * have not seen, and delete any that we no longer see.
  */
-int oscs_refresh(struct rbt *osc_tree, fulldump_sub_ctxt_p self, const char *path)
+int servers_refresh(struct rbt *source_tree, fulldump_sub_ctxt_p self, const char *path)
 // FIXME: Make sure the error handling is correct
 {
   static int dir_once_log = 0;
@@ -219,59 +204,59 @@ int oscs_refresh(struct rbt *osc_tree, fulldump_sub_ctxt_p self, const char *pat
   dir_once_log = 0;
   while ((dirent = readdir(dir)) != NULL) {
     struct rbn *rbn;
-    struct osc_data *osc;
+    struct server_data *server;
 
     if (dirent->d_type != DT_DIR ||
         strcmp(dirent->d_name, ".") == 0 ||
         strcmp(dirent->d_name, "..") == 0)
       continue;
-    rbn = rbt_find(osc_tree, dirent->d_name);
+    rbn = rbt_find(source_tree, dirent->d_name);
     errno = 0;
     if (rbn) {
-      osc = container_of(rbn, struct osc_data, tree_node);
-      rbt_del(osc_tree, &osc->tree_node);
+      server = container_of(rbn, struct server_data, tree_node);
+      rbt_del(source_tree, &server->tree_node);
     } else {
-      osc = osc_create(dirent->d_name, path, self);
+      server = _server_create(dirent->d_name, path, self);
     }
-    if (osc == NULL) {
+    if (server == NULL) {
       err = errno;
       continue;
     }
-    rbt_ins(&new_tree, &osc->tree_node);
+    rbt_ins(&new_tree, &server->tree_node);
   }
   closedir(dir);
 
-  /* destroy any oscs remaining in the old osc_tree since we
+  /* destroy any items remaining in the old source_tree since we
      did not see their associated directories this time around */
-  oscs_destroy(osc_tree);
+  servers_destroy(source_tree);
 
-  /* copy the new_tree into place over the global osc_tree */
-  memcpy(osc_tree, &new_tree, sizeof(struct rbt));
+  /* copy the new_tree into place over the global source_tree */
+  memcpy(source_tree, &new_tree, sizeof(struct rbt));
 
   return err;
 }
 
 
-void oscs_sample(struct osc_extra *osc_extra, int (*single_sample)(const char *, ldms_set_t))
+void servers_sample(struct xxc_extra *xxc_extra, int (*single_sample)(const char *, ldms_set_t))
 {
   struct rbn *rbn;
-  struct osc_data *osc;
+  struct server_data *server;
 
-  /* walk tree of known oscs */
-  struct rbt *osc_tree = &osc_extra->source_tree;
-  RBT_FOREACH(rbn, osc_tree)
+  /* walk tree of known locations */
+  struct rbt *source_tree = &xxc_extra->source_tree;
+  RBT_FOREACH(rbn, source_tree)
   {
-    osc = container_of(rbn, struct osc_data, tree_node);
+    server = container_of(rbn, struct server_data, tree_node);
     // FIXME: Make sure the error handling is correct
-    single_sample(osc->file_path, osc->metric_set);
+    single_sample(server->file_path, server->metric_set);
   }
 }
 
 
-void osc_general_term(fulldump_sub_ctxt_p self)
+void server_general_term(fulldump_sub_ctxt_p self)
 {
   log_fn(LDMSD_LDEBUG, SAMP " %s() called\n", __func__);
-  struct osc_extra *extra = self->extra;
-  oscs_destroy(&extra->source_tree);
+  struct xxc_extra *extra = self->extra;
+  servers_destroy(&extra->source_tree);
   fulldump_general_schema_fini(self);
 }

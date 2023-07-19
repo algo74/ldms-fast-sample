@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <ctype.h>
 
 #include "comp_id_helper.h"
 #include "sampler_base.h"
@@ -44,7 +45,7 @@ int fulldump_general_schema_init(fulldump_sub_ctxt_p self, char *schema_name,
 
   ldms_schema_t sch;
   int rc;
-  log_fn(LDMSD_LDEBUG, SAMP ": llite_stats_schema_init()\n");
+  log_fn(LDMSD_LDEBUG, SAMP ": %s()\n", __func__);
 
   // Finish defining the schema template
   struct ldms_metric_template_s *rec_entry = &schema_template[record_idx];
@@ -127,6 +128,9 @@ ldms_set_t fulldump_general_create_set(ldmsd_msg_log_f log_fn,
 
 void fulldump_general_destroy_set(ldms_set_t set)
 {
+  if (!set) {
+    return;
+  }
   ldmsd_set_deregister(ldms_set_instance_name_get(set), SAMP);
   ldms_set_unpublish(set);
   ldms_set_delete(set);
@@ -144,11 +148,11 @@ void fulldump_general_schema_fini(fulldump_sub_ctxt_p self)
 
 
 
-int fulldump_split_osc_name(char *osc_name, char **fs_name, int *ost_id)
+int fulldump_split_server_name(char *server_name, char **fs_name, int *server_inx, char **server_id)
 {
-  char *name_;
-  int id_;
-  char *first = strchr(osc_name, '-');
+  char *name_, *id_;
+  int idx_;
+  char *first = strchr(server_name, '-');
   if (first == NULL) {
     return 0;
   }
@@ -161,17 +165,23 @@ int fulldump_split_osc_name(char *osc_name, char **fs_name, int *ost_id)
     return 2;
   }
   // parse the fields
-  int rc = sscanf(first + 1, "OST%d-", &id_);
+  int rc = sscanf(first + 1, "%*3s%d-", &idx_);
   if (rc != 1) {
     return -2;
   }
-  name_ = strndup(osc_name, first - osc_name);
+  name_ = strndup(server_name, first - server_name);
   if (name_ == NULL) {
+    return -1;
+  }
+  id_ = strndup(first + 1, second - first - 1);
+  if (id_ == NULL) {
+    free(name_);
     return -1;
   }
   // return the results
   *fs_name = name_;
-  *ost_id = id_;
+  *server_id = id_;
+  *server_inx = idx_;
   return 3;
 }
 
@@ -195,4 +205,16 @@ int update_existing_path(const char **current_path, const char *const *path_opti
     }
   }
   return 0;
+}
+
+int empty_line(char *line)
+{
+  char *p = line;
+  while (*p != '\0' && *p != '\n' && *p != '\r') {
+    if (!isspace(*p)) {
+      return 0;
+    }
+    p++;
+  }
+  return 1;
 }
