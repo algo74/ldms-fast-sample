@@ -82,7 +82,7 @@ liblustre_oss_fulldump_la_SOURCES = \
         lustre_fulldump.h\
 				lustre_oss_fulldump.c
 
-liblustre_oss_fulldump_LIBADD = \
+liblustre_oss_fulldump_la_LIBADD = \
 	$(CORE_LIBADD) \
 	liblustre_fulldump_general.la
 
