@@ -104,7 +104,7 @@ static int obdfilter_config(fulldump_sub_ctxt_p self)
 }
 
 
-static int osd_ldiskfs_config(fulldump_sub_ctxt_p self)
+static int osd_ldiskfs_stats_config(fulldump_sub_ctxt_p self)
 {
   fd_general_stats_config(self, "/proc/fs/lustre/osd-ldiskfs", NODE_TYPE_FS, "lustre_oss_fuldump_osd_ldiskfs_stats");
 }
@@ -144,7 +144,19 @@ static int config(struct ldmsd_plugin *self,
 	  }
 
   //TODO: configure sub-contexts
-  int err = add_sub_ctxt(lustre_fulldump_llite_config);
+  int err = add_sub_ctxt(ost_oss_ost_config);
+  if (err) return err;
+  int err = add_sub_ctxt(ost_oss_ost_create_config);
+  if (err) return err;
+  int err = add_sub_ctxt(ost_oss_ost_io_config);
+  if (err) return err;
+  int err = add_sub_ctxt(ost_oss_ost_out_config);
+  if (err) return err;
+  int err = add_sub_ctxt(ost_oss_ost_seq_config);
+  if (err) return err;
+  int err = add_sub_ctxt(obdfilter_config);
+  if (err) return err;
+  int err = add_sub_ctxt(osd_ldiskfs_stats_config);
   if (err) return err;
 
 
