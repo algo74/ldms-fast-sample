@@ -146,17 +146,17 @@ static int config(struct ldmsd_plugin *self,
   //TODO: configure sub-contexts
   int err = add_sub_ctxt(ost_oss_ost_config);
   if (err) return err;
-  int err = add_sub_ctxt(ost_oss_ost_create_config);
+  err = add_sub_ctxt(ost_oss_ost_create_config);
   if (err) return err;
-  int err = add_sub_ctxt(ost_oss_ost_io_config);
+  err = add_sub_ctxt(ost_oss_ost_io_config);
   if (err) return err;
-  int err = add_sub_ctxt(ost_oss_ost_out_config);
+  err = add_sub_ctxt(ost_oss_ost_out_config);
   if (err) return err;
-  int err = add_sub_ctxt(ost_oss_ost_seq_config);
+  err = add_sub_ctxt(ost_oss_ost_seq_config);
   if (err) return err;
-  int err = add_sub_ctxt(obdfilter_config);
+  err = add_sub_ctxt(obdfilter_config);
   if (err) return err;
-  int err = add_sub_ctxt(osd_ldiskfs_stats_config);
+  err = add_sub_ctxt(osd_ldiskfs_stats_config);
   if (err) return err;
 
 
