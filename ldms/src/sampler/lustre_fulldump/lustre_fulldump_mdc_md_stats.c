@@ -87,17 +87,17 @@ static int local_sample(const char *stats_path, ldms_set_t metric_set)
   uint64_t val1, val2, val3, val4;
   int index;
 
-  log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP " %s: file %s\n", __func__, stats_path);
+  log_fn(LDMSD_LDEBUG, "%s %s %s: file %s\n", SAMP, SUB_SAMP, __func__, stats_path);
 
   sf = fopen(stats_path, "r");
   if (sf == NULL) {
-    log_fn(LDMSD_LWARNING, SAMP " " SUB_SAMP " %s: file %s not found\n",
+    log_fn(LDMSD_LWARNING, "%s %s %s: file %s not found\n", SAMP, SUB_SAMP,
            __func__, stats_path);
     return ENOENT;
   }
   // reading the first line (snapshot_time)
   if (fgets(buf, sizeof(buf), sf) == NULL) {
-    log_fn(LDMSD_LWARNING, SAMP " " SUB_SAMP " %s: failed on read from %s\n",
+    log_fn(LDMSD_LWARNING, "%s %s %s: failed on read from %s\n", SAMP, SUB_SAMP,
            __func__, stats_path);
     err_code = ENOMSG;
     goto out1;
@@ -105,7 +105,7 @@ static int local_sample(const char *stats_path, ldms_set_t metric_set)
   // log_fn(LDMSD_LDEBUG, SAMP ": llite_stats_sample: buf: %500s\n", buf);
   rc = sscanf(buf, "%64s %lu.%lu", str1, &val1, &val2);
   if (rc != 3 || strncmp(str1, "snapshot_time", MAXNAMESIZE) != 0) {
-    log_fn(LDMSD_LWARNING, SAMP " " SUB_SAMP " %s: first line in %s is not \"snapshot_time\": %.512s\n",
+    log_fn(LDMSD_LWARNING, "%s %s %s: first line in %s is not \"snapshot_time\": %.512s\n", SAMP, SUB_SAMP,
            __func__, stats_path, buf);
     err_code = ENOMSG;
     goto out1;
@@ -120,7 +120,7 @@ static int local_sample(const char *stats_path, ldms_set_t metric_set)
     rc = sscanf(buf, "%64s %lu samples",
                 str1, &val1);
     if (rc != 2) {
-      log_fn(LDMSD_LWARNING, SAMP " " SUB_SAMP " %s : failed to parse line in %s: %s\n",
+      log_fn(LDMSD_LWARNING, "%s %s %s : failed to parse line in %s: %s\n", SAMP, SUB_SAMP,
              __func__, stats_path, buf);
       err_code = ENOMSG;
       goto out2;
@@ -146,12 +146,12 @@ out1:
 
 static int sample(fulldump_sub_ctxt_p self)
 {
-  log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP " %s() called\n", __func__);
+  log_fn(LDMSD_LDEBUG, "%s %s %s() called\n", SAMP, SUB_SAMP, __func__);
   struct xxc_extra *extra = self->extra;
   if (self->schema == NULL) {
-    log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP " %s: calling schema init\n", __func__);
+    log_fn(LDMSD_LDEBUG, "%s %s %s: calling schema init\n", SAMP, SUB_SAMP, __func__);
     if (local_schema_init(self) < 0) {
-      log_fn(LDMSD_LERROR, SAMP " " SUB_SAMP " %s general schema create failed\n", __func__);
+      log_fn(LDMSD_LERROR, "%s %s %s general schema create failed\n", SAMP, SUB_SAMP, __func__);
       return ENOMEM;
 
     }
@@ -161,12 +161,12 @@ static int sample(fulldump_sub_ctxt_p self)
   //   log_fn(LDMSD_LWARNING, SAMP " %s: no path found\n", __func__);
   //   return 0;
   // };
-  log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP " %s calling refresh\n", __func__);
-  int err = servers_refresh(&extra->source_tree, self, current_path);
+  log_fn(LDMSD_LDEBUG, "%s %s %s calling refresh\n", SAMP, SUB_SAMP, __func__);
+  int err = xxc_legacy_servers_refresh(&extra->source_tree, self);
   if (err) /* running out of set memory is an error */
     return err;
 
-  servers_sample(extra, local_sample);
+  xxc_legacy_sample(extra, local_sample);
   return 0;
 }
 
@@ -174,6 +174,6 @@ static int sample(fulldump_sub_ctxt_p self)
 int lustre_fulldump_mdc_md_stats_config(fulldump_sub_ctxt_p self)
 {
   self->sample = (int (*)(void *self)) sample;
-  self->term = (int (*)(void *self)) server_general_term;
-  return server_extra_config(self, "md_stats");
+  self->term = (int (*)(void *self)) xxc_general_multisource_term;
+  return xxc_legacy_extra_config(self, "md_stats", current_path);
 }

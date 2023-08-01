@@ -55,7 +55,7 @@ static int string_comparator(void *a, const void *b)
 static void _hf_timer_cb(tsampler_timer_t timer)
 {
   struct rbn *rbn;
-  struct server_data *server;
+  struct source_data *server;
   struct xxc_extra *extra = timer->ctxt;
   struct hf_data_hanldler *handler = extra->hf_data_handler;
   pthread_mutex_lock(&extra->mutex);
@@ -64,7 +64,7 @@ static void _hf_timer_cb(tsampler_timer_t timer)
   struct rbt *source_tree = &extra->source_tree;
   RBT_FOREACH(rbn, source_tree)
   {
-    server = container_of(rbn, struct server_data, tree_node);
+    server = container_of(rbn, struct source_data, tree_node);
     handler->on_timer(server);
   }
   pthread_mutex_unlock(&extra->mutex);
@@ -73,10 +73,10 @@ static void _hf_timer_cb(tsampler_timer_t timer)
 
 int hf_hist_extra_config(fulldump_sub_ctxt_p self, char *source_category, struct hf_data_hanldler *handler)
 {
-  log_fn(LDMSD_LDEBUG, SAMP " %s config() called\n", __func__);
+  log_fn(LDMSD_LDEBUG, "%s %s config() called\n", SAMP, __func__);
   struct xxc_extra *extra = malloc(sizeof(struct xxc_extra));
   if (extra == NULL) {
-    log_fn(LDMSD_LERROR, SAMP " %s: out of memory\n", __func__);
+    log_fn(LDMSD_LERROR, "%s %s: out of memory\n", SAMP, __func__);
     return ENOMEM;
   }
   pthread_mutex_init(&extra->mutex, NULL);
@@ -92,14 +92,14 @@ int hf_hist_extra_config(fulldump_sub_ctxt_p self, char *source_category, struct
   pthread_mutex_lock(&extra->mutex);
   int rc = tsampler_timer_add(&extra->hf_timer);
   if (rc) {
-    log_fn(LDMSD_LERROR, SAMP " %s: tsampler_timer_add() failed with rc=%d\n", __func__, rc);
+    log_fn(LDMSD_LERROR, "%s %s: tsampler_timer_add() failed with rc=%d\n", SAMP, __func__, rc);
     pthread_mutex_unlock(&extra->mutex);
     free(extra);
     return rc;
   }
   self->extra = extra;
   pthread_mutex_unlock(&extra->mutex);
-  log_fn(LDMSD_LDEBUG, SAMP " : exiting normally\n", __func__);
+  log_fn(LDMSD_LDEBUG, "%s : exiting normally\n", SAMP, __func__);
   return 0;
 }
 
@@ -110,15 +110,14 @@ int hf_schema_init(fulldump_sub_ctxt_p self, char *schema_name, struct ldms_metr
 
   ldms_schema_t sch;
   int rc;
-  log_fn(LDMSD_LDEBUG, SAMP ": %s()\n", __func__);
+  log_fn(LDMSD_LDEBUG, "%s: %s()\n", SAMP, __func__);
   struct xxc_extra *extra = self->extra;
 
   // Create the schema
   sch = ldms_schema_new(schema_name);
   if (sch == NULL) {
-    log_fn(LDMSD_LERROR, SAMP
-           ": %s schema new failed"
-           " (out of memory)\n",
+    log_fn(LDMSD_LERROR, "%s: %s schema new failed"
+           " (out of memory)\n", SAMP,
            __func__);
     goto err2;
   }
@@ -144,7 +143,7 @@ int hf_schema_init(fulldump_sub_ctxt_p self, char *schema_name, struct ldms_metr
   return 0;
 
 err3:
-  log_fn(LDMSD_LERROR, SAMP ": %s schema creation failed to add %s. (%s)\n",
+  log_fn(LDMSD_LERROR, "%s: %s schema creation failed to add %s. (%s)\n", SAMP,
          __func__, field, STRERROR(-rc));
   ldms_schema_delete(sch);
 err2:
@@ -153,13 +152,13 @@ err1:
 }
 
 
-static ldms_set_t _hist_set_create(fulldump_sub_ctxt_p self, struct server_data *server)
+static ldms_set_t _hist_set_create(fulldump_sub_ctxt_p self, struct source_data *server)
 {
   ldms_set_t set;
   int index;
   char instance_name[LDMS_PRODUCER_NAME_MAX + 64];
 
-  log_fn(LDMSD_LDEBUG, SAMP ": %s()\n", __func__);
+  log_fn(LDMSD_LDEBUG, "%s: %s()\n", SAMP, __func__);
   struct xxc_extra *extra = self->extra;
   char *category = extra->source_category;
   snprintf(instance_name, sizeof(instance_name), "%s/%s/%s/%s/%s",
@@ -170,14 +169,14 @@ static ldms_set_t _hist_set_create(fulldump_sub_ctxt_p self, struct server_data 
   }
   index = ldms_metric_by_name(set, "fs_name");
   if (-1 == index) {
-    log_fn(LDMSD_LWARNING, SAMP " %s: unable to find field \"fs_name\" in schema %s - field not set\n",
+    log_fn(LDMSD_LWARNING, "%s %s: unable to find field \"fs_name\" in schema %s - field not set\n", SAMP,
            __func__, ldms_set_schema_name_get(set));
   } else {
     ldms_metric_array_set_str(set, index, server->fs_name);
   }
   index = ldms_metric_by_name(set, "server_idx");
   if (-1 == index) {
-    log_fn(LDMSD_LWARNING, SAMP " %s: unable to find field \"server_idx\" in schema %s - field not set\n",
+    log_fn(LDMSD_LWARNING, "%s %s: unable to find field \"server_idx\" in schema %s - field not set\n", SAMP,
            __func__, ldms_set_schema_name_get(set));
   } else {
     ldms_metric_set_u64(set, index, server->server_idx);
@@ -186,32 +185,32 @@ static ldms_set_t _hist_set_create(fulldump_sub_ctxt_p self, struct server_data 
 }
 
 
-static ldms_set_t _hf_set_create(fulldump_sub_ctxt_p self, struct server_data *server)
+static ldms_set_t _hf_set_create(fulldump_sub_ctxt_p self, struct source_data *server)
 {
   ldms_set_t set;
   int index;
   char instance_name[LDMS_PRODUCER_NAME_MAX + 64];
 
-  log_fn(LDMSD_LDEBUG, SAMP ": %s()\n", __func__);
+  log_fn(LDMSD_LDEBUG, "%s: %s()\n", SAMP, __func__);
   struct xxc_extra *extra = self->extra;
   char *category = extra->source_category;
   snprintf(instance_name, sizeof(instance_name), "%s/%s/%s/%s/%s_hf",
            self->sampl_ctxt_p->producer_name, SAMP, server->fs_name, server->server_id, category);
   set = fulldump_general_create_set(log_fn, self->sampl_ctxt_p->producer_name, instance_name, &self->sampl_ctxt_p->auth, &extra->hf_cid, extra->hf_schema);
   if (!set) {
-    log_fn(LDMSD_LERROR, SAMP "%s %s: unable to create set\n", extra->source_category, __func__);
+    log_fn(LDMSD_LERROR, "%s%s %s: unable to create set\n", SAMP, extra->source_category, __func__);
     return NULL;
   }
   index = ldms_metric_by_name(set, "fs_name");
   if (-1 == index) {
-    log_fn(LDMSD_LWARNING, SAMP " %s: unable to find field \"fs_name\" in schema %s - field not set\n",
+    log_fn(LDMSD_LWARNING, "%s %s: unable to find field \"fs_name\" in schema %s - field not set\n", SAMP,
            __func__, ldms_set_schema_name_get(set));
   } else {
     ldms_metric_array_set_str(set, index, server->fs_name);
   }
   index = ldms_metric_by_name(set, "server_idx");
   if (-1 == index) {
-    log_fn(LDMSD_LWARNING, SAMP " %s: unable to find field \"server_idx\" in schema %s - field not set\n",
+    log_fn(LDMSD_LWARNING, "%s %s: unable to find field \"server_idx\" in schema %s - field not set\n", SAMP,
            __func__, ldms_set_schema_name_get(set));
   } else {
     ldms_metric_set_u64(set, index, server->server_idx);
@@ -220,13 +219,13 @@ static ldms_set_t _hf_set_create(fulldump_sub_ctxt_p self, struct server_data *s
 }
 
 
-static struct server_data *_server_create(const char *server_dir, const char *basedir, fulldump_sub_ctxt_p self)
+static struct source_data *_server_create(const char *server_dir, const char *basedir, fulldump_sub_ctxt_p self)
 {
-  struct server_data *server;
+  struct source_data *server;
   char path_tmp[PATH_MAX];
   char *state;
 
-  log_fn(LDMSD_LDEBUG, SAMP " %s() %s from %s\n",
+  log_fn(LDMSD_LDEBUG, "%s %s() %s from %s\n", SAMP,
          __func__, server_dir, basedir);
   server = calloc(1, sizeof(*server));
   if (server == NULL)
@@ -249,7 +248,7 @@ static struct server_data *_server_create(const char *server_dir, const char *ba
 
   int rc = fulldump_split_server_name(server->name, &server->fs_name, &server->server_idx, &server->server_id);
   if (rc != 3) {
-    log_fn(LDMSD_LWARNING, SAMP "%s: unable to parse server name \"%s\"; return code=%d\n",
+    log_fn(LDMSD_LWARNING, "%s%s: unable to parse server name \"%s\"; return code=%d\n", SAMP,
            __func__, server->name, rc);
     goto out5;
   }
@@ -287,9 +286,9 @@ out1:
 }
 
 
-static void _server_destroy(struct server_data *server, fulldump_sub_ctxt_p self)
+static void _server_destroy(struct source_data *server, fulldump_sub_ctxt_p self)
 {
-  log_fn(LDMSD_LDEBUG, SAMP " %s() %s\n", __func__, server->name);
+  log_fn(LDMSD_LDEBUG, "%s %s() %s\n", SAMP, __func__, server->name);
   fulldump_general_destroy_set(server->metric_set);
   fulldump_general_destroy_set(server->hf_metric_set);
   struct xxc_extra *extra = self->extra;
@@ -306,11 +305,11 @@ static void _server_destroy(struct server_data *server, fulldump_sub_ctxt_p self
 void hf_hist_servers_destroy(struct rbt *source_tree, fulldump_sub_ctxt_p self)
 {
   struct rbn *rbn;
-  struct server_data *server;
+  struct source_data *server;
 
   while (!rbt_empty(source_tree)) {
     rbn = rbt_min(source_tree);
-    server = container_of(rbn, struct server_data, tree_node);
+    server = container_of(rbn, struct source_data, tree_node);
     rbt_del(source_tree, rbn);
     _server_destroy(server, self);
   }
@@ -341,7 +340,7 @@ int hf_hist_servers_refresh(struct rbt *source_tree, fulldump_sub_ctxt_p self, c
   dir = opendir(path);
   if (dir == NULL) {
     if (!dir_once_log) {
-      log_fn(LDMSD_LDEBUG, SAMP "%s: unable to open dir %s\n",
+      log_fn(LDMSD_LDEBUG, "%s%s: unable to open dir %s\n", SAMP,
              __func__, path);
       dir_once_log = 1;
     }
@@ -352,7 +351,7 @@ int hf_hist_servers_refresh(struct rbt *source_tree, fulldump_sub_ctxt_p self, c
   pthread_mutex_lock(&extra->mutex);
   while ((dirent = readdir(dir)) != NULL) {
     struct rbn *rbn;
-    struct server_data *server;
+    struct source_data *server;
     if (dirent->d_type != DT_DIR ||
         strcmp(dirent->d_name, ".") == 0 ||
         strcmp(dirent->d_name, "..") == 0)
@@ -360,7 +359,7 @@ int hf_hist_servers_refresh(struct rbt *source_tree, fulldump_sub_ctxt_p self, c
     rbn = rbt_find(source_tree, dirent->d_name);
     errno = 0;
     if (rbn) {
-      server = container_of(rbn, struct server_data, tree_node);
+      server = container_of(rbn, struct source_data, tree_node);
       rbt_del(source_tree, &server->tree_node);
     } else {
       server = _server_create(dirent->d_name, path, self);
@@ -385,7 +384,7 @@ int hf_hist_servers_refresh(struct rbt *source_tree, fulldump_sub_ctxt_p self, c
 void hf_servers_sample(struct xxc_extra *extra)
 {
   struct rbn *rbn;
-  struct server_data *server;
+  struct source_data *server;
   struct hf_data_hanldler *handler = extra->hf_data_handler;
   pthread_mutex_lock(&extra->mutex);
 
@@ -393,7 +392,7 @@ void hf_servers_sample(struct xxc_extra *extra)
   struct rbt *source_tree = &extra->source_tree;
   RBT_FOREACH(rbn, source_tree)
   {
-    server = container_of(rbn, struct server_data, tree_node);
+    server = container_of(rbn, struct source_data, tree_node);
     handler->on_sample(server);
   }
   pthread_mutex_unlock(&extra->mutex);
@@ -403,13 +402,13 @@ void hf_servers_sample(struct xxc_extra *extra)
 void hist_servers_sample(struct xxc_extra *xxc_extra, int (*single_sample)(const char *, ldms_set_t))
 {
   struct rbn *rbn;
-  struct server_data *server;
+  struct source_data *server;
 
   /* walk tree of known locations */
   struct rbt *source_tree = &xxc_extra->source_tree;
   RBT_FOREACH(rbn, source_tree)
   {
-    server = container_of(rbn, struct server_data, tree_node);
+    server = container_of(rbn, struct source_data, tree_node);
     // FIXME: Make sure the error handling is correct
     single_sample(server->file_path, server->metric_set);
   }
@@ -418,7 +417,7 @@ void hist_servers_sample(struct xxc_extra *xxc_extra, int (*single_sample)(const
 
 void hf_hist_term(fulldump_sub_ctxt_p self)
 {
-  log_fn(LDMSD_LDEBUG, SAMP " %s() called\n", __func__);
+  log_fn(LDMSD_LDEBUG, "%s %s() called\n", SAMP, __func__);
   struct xxc_extra *extra = self->extra;
   pthread_mutex_lock(&extra->mutex);
   tsampler_timer_remove(&extra->hf_timer);

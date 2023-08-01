@@ -39,13 +39,13 @@
 
 // #define _GNU_SOURCE
 
-struct server_data;
+struct source_data;
 
 struct hf_data_hanldler {
   void* (*create)(void);
   void (*destroy)(void *data);
-  void (*on_sample)(struct server_data *server);
-  void (*on_timer)(struct server_data *server);
+  void (*on_sample)(struct source_data *server);
+  void (*on_timer)(struct source_data *server);
 };
 
 struct xxc_extra {
@@ -58,7 +58,7 @@ struct xxc_extra {
   struct tsampler_timer hf_timer;
 };
 
-struct server_data {
+struct source_data {
   char *name;
   char *fs_name;
   int server_idx;

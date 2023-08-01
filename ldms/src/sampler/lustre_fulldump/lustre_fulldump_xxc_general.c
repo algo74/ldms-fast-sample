@@ -42,133 +42,280 @@ static int string_comparator(void *a, const void *b)
 }
 
 
-int server_extra_config(fulldump_sub_ctxt_p self, char *source_category)
+int xxc_extra_config(fulldump_sub_ctxt_p self,
+                     const char *source_category,
+                     const char *source_root,
+                     enum node_type type,
+                     int (*single_sample)(fulldump_sub_ctxt_p self, struct source_data *source, void *virtual_args),
+                     void *virtual_args)
 {
-  log_fn(LDMSD_LDEBUG, SAMP " %s config() called\n", __func__);
-  struct xxc_extra *extra = malloc(sizeof(struct xxc_extra));
+  int rc = 0;
+  log_fn(LDMSD_LDEBUG, "%s  %s called\n", SAMP, __func__);
+  struct xxc_extra *extra = calloc(1, sizeof(struct xxc_extra));
   if (extra == NULL) {
-    log_fn(LDMSD_LERROR, SAMP " %s: out of memory\n", __func__);
+    log_fn(LDMSD_LERROR, "%s %s: out of memory\n", SAMP, __func__);
     return ENOMEM;
   }
   extra->source_category = source_category;
-  rbt_init(&extra->source_tree, string_comparator);
+  extra->source_root = source_root;
+  extra->type = type;
+  extra->single_sample = single_sample;
+  extra->virtual_args = virtual_args;
+  if (NODE_TYPE_SINGLE_SOURCE == type) {
+    rc = asprintf(&extra->single_source.file_path, "%s/%s", source_root, source_category);
+    if (rc < 0) {
+      log_fn(LDMSD_LERROR, "%s %s: out of memory\n", SAMP, __func__);
+      free(extra);
+      return rc;
+    }
+    // NOTE: here we simply copy dir_path, so we don't free it when destroying
+    // extra->single_source.dir_path = source_root;
+    // TODO: what would be the proper name for the single source?
+    extra->single_source.name = extra->single_source.file_path;
+  } else {
+    rbt_init(&extra->source_tree, string_comparator);
+  }
   self->extra = extra;
-  log_fn(LDMSD_LDEBUG, SAMP " : exiting normally\n", __func__);
+  log_fn(LDMSD_LDEBUG, "%s : exiting normally\n", SAMP, __func__);
   return 0;
 }
 
 
-static ldms_set_t _set_create(fulldump_sub_ctxt_p self, struct server_data *server)
+int xxc_legacy_extra_config(fulldump_sub_ctxt_p self, const char *source_category, const char *source_root)
+{
+  log_fn(LDMSD_LDEBUG, "%s  %s called\n", SAMP, __func__);
+  return xxc_extra_config(self, source_category, source_root, NODE_TYPE_LEGACY, NULL, NULL);
+  // struct xxc_extra *extra = calloc(1, sizeof(struct xxc_extra));
+  // if (extra == NULL) {
+  //   log_fn(LDMSD_LERROR, "%s %s: out of memory\n", SAMP, __func__);
+  //   return ENOMEM;
+  // }
+  // extra->type = NODE_TYPE_LEGACY;
+  // extra->source_category = source_category;
+  // extra->source_root = source_root;
+  // rbt_init(&extra->source_tree, string_comparator);
+  // self->extra = extra;
+  // log_fn(LDMSD_LDEBUG, "%s : exiting normally\n", SAMP, __func__);
+  // return 0;
+}
+
+
+// TODO: remove this function as it is not used
+// int single_source_extra_config(fulldump_sub_ctxt_p self, char *source_category, char *source_root)
+// {
+//   int rc = 0;
+//   log_fn(LDMSD_LDEBUG, "%s  %s config() called\n", SAMP, __func__);
+//   struct xxc_extra *extra = calloc(1, sizeof(struct xxc_extra));
+//   if (extra == NULL) {
+//     log_fn(LDMSD_LERROR, "%s %s: out of memory\n", SAMP, __func__);
+//     return ENOMEM;
+//   }
+//   extra->source_category = source_category;
+//   extra->source_root = source_root;
+//   // combine the path and the category
+//   rc = asprintf(&extra->single_source.file_path, "%s/%s", extra->source_root, source_category);
+//   if (rc < 0) {
+//     log_fn(LDMSD_LERROR, "%s %s: out of memory\n", SAMP, __func__);
+//     goto out1;
+//   }
+//   // NOTE: the single source struct has no metric set nor schema configured; do it in "sample"
+//   self->extra = extra;
+//   log_fn(LDMSD_LDEBUG, "%s : exiting normally\n", SAMP, __func__);
+//   return 0;
+
+// out1:
+//   extra->single_source.file_path = NULL;
+//   free(extra);
+//   return rc;
+// }
+
+
+ldms_set_t xxc_general_set_create(fulldump_sub_ctxt_p self, struct source_data *node)
 {
   ldms_set_t set;
   int index;
   char instance_name[LDMS_PRODUCER_NAME_MAX + 64];
 
-  log_fn(LDMSD_LDEBUG, SAMP ": %s()\n", __func__);
+  log_fn(LDMSD_LDEBUG, "%s: %s()\n", SAMP, __func__);
   struct xxc_extra *extra = self->extra;
-  char *category = extra->source_category;
-  snprintf(instance_name, sizeof(instance_name), "%s/%s/%s/%s/%s",
-           self->sampl_ctxt_p->producer_name, SAMP, server->fs_name, server->server_id, category);
+  if (NODE_TYPE_SINGLE_SOURCE == extra->type) {
+    snprintf(instance_name, sizeof(instance_name), "%s/%s/%s",
+             self->sampl_ctxt_p->producer_name, SAMP, node->file_path);
+  } else {
+    const char *category = extra->source_category;
+    if (NODE_TYPE_FS == extra->type) {
+      snprintf(instance_name, sizeof(instance_name), "%s/%s/%s/%s",
+              self->sampl_ctxt_p->producer_name, SAMP, node->fs_name, category);
+    } else {
+      snprintf(instance_name, sizeof(instance_name), "%s/%s/%s/%s/%s",
+              self->sampl_ctxt_p->producer_name, SAMP, node->fs_name, node->server_id, category);
+    }
+  }
   set = fulldump_general_create_set(log_fn, self->sampl_ctxt_p->producer_name, instance_name, &self->sampl_ctxt_p->auth, &self->cid, self->schema);
   if (!set) {
     return NULL;
   }
   index = ldms_metric_by_name(set, "fs_name");
   if (-1 == index) {
-    log_fn(LDMSD_LWARNING, SAMP " %s: unable to find field \"fs_name\" in schema %s - field not set\n",
+    log_fn(LDMSD_LWARNING, "%s %s: unable to find field \"fs_name\" in schema %s - field not set\n", SAMP,
            __func__, ldms_set_schema_name_get(set));
   } else {
-    ldms_metric_array_set_str(set, index, server->fs_name);
+    ldms_metric_array_set_str(set, index, node->fs_name);
   }
   index = ldms_metric_by_name(set, "server_idx");
   if (-1 == index) {
-    log_fn(LDMSD_LWARNING, SAMP " %s: unable to find field \"server_idx\" in schema %s - field not set\n",
+    log_fn(LDMSD_LWARNING, "%s %s: unable to find field \"server_idx\" in schema %s - field not set\n", SAMP,
            __func__, ldms_set_schema_name_get(set));
   } else {
-    ldms_metric_set_u64(set, index, server->server_idx);
+    ldms_metric_set_u64(set, index, node->server_idx);
   }
   return set;
 }
 
 
-static struct server_data *_server_create(const char *server_dir, const char *basedir, fulldump_sub_ctxt_p self)
+static int _split_fs_name(char *input, char **fs_name)
 {
-  struct server_data *server;
+  char *name_;
+  char *first = strchr(input, '-');
+  if (first == NULL) {
+    return 0;
+  }
+  name_ = strndup(input, first - input);
+  if (name_ == NULL) {
+    return -1;
+  }
+  // return the results
+  *fs_name = name_;
+  return 1;
+}
+
+
+static int _node_init(struct source_data *node,
+                      const char *server_dir,
+                      const char *basedir,
+                      fulldump_sub_ctxt_p self,
+                      enum node_type type)
+{
   char path_tmp[PATH_MAX];
   char *state;
 
-  log_fn(LDMSD_LDEBUG, SAMP " %s() %s from %s\n",
+  log_fn(LDMSD_LDEBUG, "%s %s() %s from %s\n", SAMP,
          __func__, server_dir, basedir);
-  server = calloc(1, sizeof(*server));
-  if (server == NULL)
-    goto out1;
 
-  server->name = strdup(server_dir);
-  if (server->name == NULL)
+  node->name = strdup(server_dir);
+  if (node->name == NULL)
     goto out2;
 
-  snprintf(path_tmp, PATH_MAX, "%s/%s", basedir, server_dir);
-  server->dir_path = strdup(path_tmp);
-  if (server->dir_path == NULL)
-    goto out3;
-
+  //TODO: check if asprintf is better
   struct xxc_extra *extra = self->extra;
-  snprintf(path_tmp, PATH_MAX, "%s/%s", server->dir_path, extra->source_category);
-  server->file_path = strdup(path_tmp);
-  if (server->file_path == NULL)
+  snprintf(path_tmp, PATH_MAX, "%s/%s/%s", basedir, server_dir, extra->source_category);
+  node->file_path = strdup(path_tmp);
+  if (node->file_path == NULL)
     goto out4;
 
-  int rc = fulldump_split_server_name(server->name, &server->fs_name, &server->server_idx, &server->server_id);
-  if (rc != 3) {
-    log_fn(LDMSD_LWARNING, SAMP "%s: unable to parse server name \"%s\"; return code=%d\n",
-           __func__, server->name, rc);
+  if (NODE_TYPE_SERVER == type || NODE_TYPE_LEGACY == type) {
+    int rc = fulldump_split_server_name(node->name, &node->fs_name, &node->server_idx, &node->server_id);
+    if (rc != 3) {
+      log_fn(LDMSD_LWARNING, "%s%s: unable to parse server name \"%s\"; return code=%d\n", SAMP,
+            __func__, node->name, rc);
+      goto out5;
+    }
+  } else if (NODE_TYPE_FS == type) {
+    int rc = _split_fs_name(node->name, &node->fs_name);
+    if (rc != 1) {
+      log_fn(LDMSD_LWARNING, "%s%s: unable to parse fs name \"%s\"; return code=%d\n", SAMP,
+            __func__, node->name, rc);
+      goto out5;
+    }
+  } else {
+    log_fn(LDMSD_LERROR, "%s%s: unknown node type\n", SAMP, __func__);
     goto out5;
   }
 
-  server->metric_set = _set_create(self, server);
-  if (server->metric_set == NULL)
-    goto out6;
-  rbn_init(&server->tree_node, server->name);
-  return server;
+  /* legacy samples expect the sets created for them but new samples create sets themselves when needed */
+  if (NODE_TYPE_LEGACY == type) {
+    node->metric_set = xxc_general_set_create(self, node);
+    if (node->metric_set == NULL)
+      goto out6;
+  }
+  rbn_init(&node->tree_node, node->name);
+  return 0;
 
 out6:
-  free(server->fs_name);
+  free(node->fs_name);
 out5:
-  free(server->file_path);
+  free(node->file_path);
 out4:
-  free(server->dir_path);
+  // free(node->dir_path);
 out3:
-  free(server->name);
+  free(node->name);
 out2:
-  free(server);
-out1:
-  return NULL;
+  return 1;
 }
 
 
-static void _server_destroy(struct server_data *server)
+static struct source_data *_node_create(const char *server_dir, const char *basedir, fulldump_sub_ctxt_p self, enum node_type type)
 {
-  log_fn(LDMSD_LDEBUG, SAMP " %s() %s\n", __func__, server->name);
+  struct source_data *node;
+
+  log_fn(LDMSD_LDEBUG, "%s %s() %s from %s\n", SAMP,
+         __func__, server_dir, basedir);
+  node = calloc(1, sizeof(*node));
+  if (node == NULL)
+    return NULL;
+
+  int rc = _node_init(node, server_dir, basedir, self, type);
+  if (rc) {
+    free(node);
+    return NULL;
+  }
+  return node;
+}
+
+
+static struct source_data *_server_create(const char *server_dir, const char *basedir, fulldump_sub_ctxt_p self)
+{
+  return _node_create(server_dir, basedir, self, NODE_TYPE_SERVER);
+}
+
+
+static struct source_data *_fs_create(const char *fs_dir, const char *basedir, fulldump_sub_ctxt_p self)
+{
+  return _node_create(fs_dir, basedir, self, NODE_TYPE_FS);
+}
+
+
+static void _node_destroy(struct source_data *server)
+{
+  log_fn(LDMSD_LDEBUG, "%s %s() %s\n", SAMP, __func__, server->name);
   fulldump_general_destroy_set(server->metric_set);
-  free(server->fs_name);
-  free(server->file_path);
-  free(server->dir_path);
-  free(server->name);
+  if (server->name) free(server->name);
+  if (server->fs_name) free(server->fs_name);
+  if (server->server_id) free(server->server_id);
+  // if (server->dir_path) free(server->dir_path);
+  if (server->file_path) free(server->file_path);
   free(server);
 }
 
 
-void servers_destroy(struct rbt *source_tree)
+void multisource_destroy(struct rbt *source_tree)
 {
   struct rbn *rbn;
-  struct server_data *server;
+  struct source_data *node;
 
   while (!rbt_empty(source_tree)) {
     rbn = rbt_min(source_tree);
-    server = container_of(rbn, struct server_data, tree_node);
+    node = container_of(rbn, struct source_data, tree_node);
     rbt_del(source_tree, rbn);
-    _server_destroy(server);
+    _node_destroy(node);
   }
+}
+
+
+void single_source_destroy(struct xxc_extra *extra)
+{
+  if (extra->single_source.file_path) free(extra->single_source.file_path);
+  fulldump_general_destroy_set(extra->single_source.metric_set);
 }
 
 
@@ -176,14 +323,21 @@ void servers_destroy(struct rbt *source_tree)
  * Create data structures for any file that we
  * have not seen, and delete any that we no longer see.
  */
-int servers_refresh(struct rbt *source_tree, fulldump_sub_ctxt_p self, const char *path)
+int multisource_refresh(struct rbt *source_tree, fulldump_sub_ctxt_p self, enum node_type type)
 // FIXME: Make sure the error handling is correct
 {
-  static int dir_once_log = 0;
+  log_fn(LDMSD_LDEBUG, "%s %s: type %d\n", SAMP, __func__, type);
+  int err = 0;
+  if (NODE_TYPE_SINGLE_SOURCE == type) {
+    log_fn(LDMSD_LDEBUG, "%s %s: single source refresh - doing nothing\n", SAMP, __func__);
+    return 0;
+  }
+
   struct dirent *dirent;
   DIR *dir;
   struct rbt new_tree;
-  int err = 0;
+  struct xxc_extra *extra = self->extra;
+  const char *path = extra->source_root;
 
   rbt_init(&new_tree, string_comparator);
 
@@ -194,17 +348,17 @@ int servers_refresh(struct rbt *source_tree, fulldump_sub_ctxt_p self, const cha
      here. */
   dir = opendir(path);
   if (dir == NULL) {
-    if (!dir_once_log) {
-      log_fn(LDMSD_LDEBUG, SAMP "%s: unable to open dir %s\n",
+    if (!extra->dir_once_log) {
+      log_fn(LDMSD_LDEBUG, "%s%s: unable to open dir %s\n", SAMP,
              __func__, path);
-      dir_once_log = 1;
+      extra->dir_once_log = 1;
     }
     return 0;
   }
-  dir_once_log = 0;
+  extra->dir_once_log = 0;
   while ((dirent = readdir(dir)) != NULL) {
     struct rbn *rbn;
-    struct server_data *server;
+    struct source_data *node;
 
     if (dirent->d_type != DT_DIR ||
         strcmp(dirent->d_name, ".") == 0 ||
@@ -213,22 +367,22 @@ int servers_refresh(struct rbt *source_tree, fulldump_sub_ctxt_p self, const cha
     rbn = rbt_find(source_tree, dirent->d_name);
     errno = 0;
     if (rbn) {
-      server = container_of(rbn, struct server_data, tree_node);
-      rbt_del(source_tree, &server->tree_node);
+      node = container_of(rbn, struct source_data, tree_node);
+      rbt_del(source_tree, &node->tree_node);
     } else {
-      server = _server_create(dirent->d_name, path, self);
+      node = _node_create(dirent->d_name, path, self, type);
     }
-    if (server == NULL) {
+    if (node == NULL) {
       err = errno;
       continue;
     }
-    rbt_ins(&new_tree, &server->tree_node);
+    rbt_ins(&new_tree, &node->tree_node);
   }
   closedir(dir);
 
   /* destroy any items remaining in the old source_tree since we
      did not see their associated directories this time around */
-  servers_destroy(source_tree);
+  multisource_destroy(source_tree);
 
   /* copy the new_tree into place over the global source_tree */
   memcpy(source_tree, &new_tree, sizeof(struct rbt));
@@ -237,26 +391,96 @@ int servers_refresh(struct rbt *source_tree, fulldump_sub_ctxt_p self, const cha
 }
 
 
-void servers_sample(struct xxc_extra *xxc_extra, int (*single_sample)(const char *, ldms_set_t))
+int xxc_legacy_servers_refresh(struct rbt *source_tree, fulldump_sub_ctxt_p self)
+{
+  return multisource_refresh(source_tree, self, NODE_TYPE_LEGACY);
+}
+
+
+// int fs_refresh(struct rbt *source_tree, fulldump_sub_ctxt_p self)
+// {
+//   return multisource_refresh(source_tree, self, NODE_TYPE_FS);
+// }
+
+
+/**
+ * Legacy sample function does not refresh the source tree;
+ * it relies on the caller to do so.
+ *
+*/
+void xxc_legacy_sample(struct xxc_extra *xxc_extra, int (*single_sample)(const char *, ldms_set_t))
 {
   struct rbn *rbn;
-  struct server_data *server;
+  struct source_data *server;
 
   /* walk tree of known locations */
   struct rbt *source_tree = &xxc_extra->source_tree;
   RBT_FOREACH(rbn, source_tree)
   {
-    server = container_of(rbn, struct server_data, tree_node);
+    server = container_of(rbn, struct source_data, tree_node);
     // FIXME: Make sure the error handling is correct
     single_sample(server->file_path, server->metric_set);
   }
 }
 
 
-void server_general_term(fulldump_sub_ctxt_p self)
+void xxc_general_sample(fulldump_sub_ctxt_p self)
 {
-  log_fn(LDMSD_LDEBUG, SAMP " %s() called\n", __func__);
   struct xxc_extra *extra = self->extra;
-  servers_destroy(&extra->source_tree);
+  enum node_type type = extra->type;
+  if (NODE_TYPE_LEGACY == type) {
+    log_fn(LDMSD_LERROR, "%s %s: did nothing; need to call xxc_legacy_sample for NODE_TYPE_LEGACY\n", SAMP, __func__);
+  } else if (NODE_TYPE_SINGLE_SOURCE == type) {
+    log_fn(LDMSD_LDEBUG, "%s %s: single source sample\n", SAMP, __func__);
+    extra->single_sample(self, &extra->single_source, extra->virtual_args);
+  } else if (NODE_TYPE_SERVER == type || NODE_TYPE_FS == type) {
+    log_fn(LDMSD_LDEBUG, "%s %s: multisource sample\n", SAMP, __func__);
+    struct rbt *source_tree = &extra->source_tree;
+    struct rbn *rbn;
+    struct source_data *node;
+    int rc = multisource_refresh(source_tree, self, type);
+    if (rc) {
+      log_fn(LDMSD_LERROR, "%s %s: multisource_refresh failed\n", SAMP, __func__);
+      return;
+    }
+    RBT_FOREACH(rbn, source_tree) {
+      node = container_of(rbn, struct source_data, tree_node);
+      rc = extra->single_sample(self, node, extra->virtual_args);
+      if (rc) {
+        log_fn(LDMSD_LERROR, "%s %s: single_sample failed for file %s\n",
+                SAMP, __func__, node->file_path);
+      }
+    }
+  } else {
+    log_fn(LDMSD_LERROR, "%s %s: unknown node type\n", SAMP, __func__);
+  }
+}
+
+
+void xxc_general_multisource_term(fulldump_sub_ctxt_p self)
+{
+  log_fn(LDMSD_LDEBUG, "%s %s() called\n", SAMP, __func__);
+  struct xxc_extra *extra = self->extra;
+  multisource_destroy(&extra->source_tree);
   fulldump_general_schema_fini(self);
+}
+
+
+void xxc_general_single_source_term(fulldump_sub_ctxt_p self)
+{
+  log_fn(LDMSD_LDEBUG, "%s %s() called\n", SAMP, __func__);
+  struct xxc_extra *extra = self->extra;
+  single_source_destroy(extra);
+  fulldump_general_schema_fini(self);
+}
+
+
+void xxc_general_term(fulldump_sub_ctxt_p self)
+{
+  struct xxc_extra *extra = self->extra;
+  if (NODE_TYPE_SINGLE_SOURCE == extra->type) {
+    xxc_general_single_source_term(self);
+  } else {
+    xxc_general_multisource_term(self);
+  }
 }

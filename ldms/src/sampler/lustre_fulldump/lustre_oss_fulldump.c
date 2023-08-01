@@ -5,33 +5,27 @@
  *
  * SPDX-License-Identifier: (GPL-2.0 OR BSD-3-Clause)
  */
-#include <limits.h>
-#include <string.h>
-#include <dirent.h>
-#include <coll/rbt.h>
+// #include <limits.h>
+// #include <string.h>
+// #include <dirent.h>
+// #include <coll/rbt.h>
 #include <sys/queue.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
+// #include <sys/types.h>
+// #include <sys/stat.h>
+// #include <unistd.h>
 #include "ldms.h"
 #include "ldmsd.h"
 #include "config.h"
 #include "lustre_fulldump.h"
-#include "lustre_fulldump_llite.h"
-#include "lustre_fulldump_lnet_peers.h"
-#include "lustre_fulldump_mdc_md_stats.h"
-#include "lustre_fulldump_mdc_rpc_stats.h"
-#include "lustre_fulldump_mdc_stats.h"
-#include "lustre_fulldump_mdc_timeouts.h"
-#include "lustre_fulldump_osc_rpc_stats.h"
-#include "lustre_fulldump_osc_stats.h"
-#include "lustre_fulldump_osc_timeouts.h"
 
-// #include "jobid_helper.h"
+#include "lustre_fulldump_xxc_general.h"
+#include "lustre_fd-general_stats.h"
+
+#include "jobid_helper.h"
 
 #define _GNU_SOURCE
 
-#define SAMPLER_NAME "lustre_fulldump"
+#define SAMPLER_NAME "lustre_oss_fulldump"
 char *SAMP = SAMPLER_NAME;
 
 struct fulldump_ctxt samp_ctxt = {0};
@@ -74,6 +68,47 @@ static int add_sub_ctxt(int (*sub_ctxt_config)(struct fulldump_sub_ctxt *))
 }
 
 
+static int ost_oss_ost_config(fulldump_sub_ctxt_p self)
+{
+  fd_general_stats_config(self, "/sys/kernel/debug/lustre/ost/OSS/ost", NODE_TYPE_SINGLE_SOURCE, "lustre_oss_fuldump_ost_oss_ost_stats");
+}
+
+
+static int ost_oss_ost_create_config(fulldump_sub_ctxt_p self)
+{
+  fd_general_stats_config(self, "/sys/kernel/debug/lustre/ost/OSS/ost_create", NODE_TYPE_SINGLE_SOURCE, "lustre_oss_fuldump_ost_oss_ost_create_stats");
+}
+
+
+static int ost_oss_ost_io_config(fulldump_sub_ctxt_p self)
+{
+  fd_general_stats_config(self, "/sys/kernel/debug/lustre/ost/OSS/ost_io", NODE_TYPE_SINGLE_SOURCE, "lustre_oss_fuldump_ost_oss_ost_io_stats");
+}
+
+
+static int ost_oss_ost_out_config(fulldump_sub_ctxt_p self)
+{
+  fd_general_stats_config(self, "/sys/kernel/debug/lustre/ost/OSS/ost_out", NODE_TYPE_SINGLE_SOURCE, "lustre_oss_fuldump_ost_oss_ost_out_stats");
+}
+
+
+static int ost_oss_ost_seq_config(fulldump_sub_ctxt_p self)
+{
+  fd_general_stats_config(self, "/sys/kernel/debug/lustre/ost/OSS/ost_se q", NODE_TYPE_SINGLE_SOURCE, "lustre_oss_fuldump_ost_oss_ost_se q_stats");
+}
+
+
+static int obdfilter_config(fulldump_sub_ctxt_p self)
+{
+  fd_general_stats_config(self, "/proc/fs/lustre/obdfilter", NODE_TYPE_FS, "lustre_oss_fuldump_obdfilter_stats");
+}
+
+
+static int osd_ldiskfs_config(fulldump_sub_ctxt_p self)
+{
+  fd_general_stats_config(self, "/proc/fs/lustre/osd-ldiskfs", NODE_TYPE_FS, "lustre_oss_fuldump_osd_ldiskfs_stats");
+}
+
 static int config(struct ldmsd_plugin *self,
                   struct attr_value_list *kwl, struct attr_value_list *avl)
 {
@@ -111,22 +146,7 @@ static int config(struct ldmsd_plugin *self,
   //TODO: configure sub-contexts
   int err = add_sub_ctxt(lustre_fulldump_llite_config);
   if (err) return err;
-  err = add_sub_ctxt(lustre_fulldump_lnet_peers_config);
-  if (err) return err;
-  err = add_sub_ctxt(lustre_fulldump_mdc_md_stats_config);
-  if (err) return err;
-  err = add_sub_ctxt(lustre_fulldump_mdc_rpc_stats_config);
-  if (err) return err;
-  err = add_sub_ctxt(lustre_fulldump_mdc_stats_config);
-  if (err) return err;
-  err = add_sub_ctxt(lustre_fulldump_mdc_timeouts_config);
-  if (err) return err;
-  err = add_sub_ctxt(lustre_fulldump_osc_rpc_stats_config);
-  if (err) return err;
-  err = add_sub_ctxt(lustre_fulldump_osc_stats_config);
-  if (err) return err;
-  err = add_sub_ctxt(lustre_fulldump_osc_timeouts_config);
-  if (err) return err;
+
 
 
   log_fn(LDMSD_LDEBUG, "%s config() all done\n", SAMP);

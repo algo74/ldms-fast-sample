@@ -111,14 +111,14 @@ static ldms_set_t local_set_create(const char *producer_name,
   int index;
   char instance_name[LDMS_PRODUCER_NAME_MAX + 64];
 
-  log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP ": %s()\n", __func__);
+  log_fn(LDMSD_LDEBUG, "%s %s: %s()\n", SAMP, SUB_SAMP, __func__);
   snprintf(instance_name, sizeof(instance_name), "%s/%s/%s",
            producer_name, SAMP, SUB_SAMP);
   set = fulldump_general_create_set(log_fn, producer_name, instance_name, auth, cid, schema);
   if (!set) {
     return NULL;
   }
-  log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP ": %s() exited normally\n", __func__);
+  log_fn(LDMSD_LDEBUG, "%s %s: %s() exited normally\n", SAMP, SUB_SAMP, __func__);
   return set;
 }
 
@@ -138,18 +138,18 @@ static int local_sample(fulldump_sub_ctxt_p self)
   int index;
 
   sprintf(source_path, "%s/peers", current_path);
-  log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP ": %s: file %s\n", __func__, source_path);
+  log_fn(LDMSD_LDEBUG, "%s %s: %s: file %s\n", SAMP, SUB_SAMP, __func__, source_path);
 
   sf = fopen(source_path, "r");
   if (sf == NULL) {
     // TODO: log once
-    log_fn(LDMSD_LWARNING, SAMP " " SUB_SAMP "%s: file %s not found\n",
+    log_fn(LDMSD_LWARNING, "%s %s %s: file %s not found\n", SAMP, SUB_SAMP,
            __func__, source_path);
     return ENOENT;
   }
   // reading the first line (header) and ignore
   if (fgets(buf, sizeof(buf), sf) == NULL) {
-    log_fn(LDMSD_LWARNING, SAMP " " SUB_SAMP "%s: failed on read from %s\n",
+    log_fn(LDMSD_LWARNING, "%s %s %s: failed on read from %s\n", SAMP, SUB_SAMP,
            __func__, source_path);
     err_code = ENOMSG;
     goto out1;
@@ -160,7 +160,7 @@ static int local_sample(fulldump_sub_ctxt_p self)
     fulldump_ctxt_p ctxt = self->sampl_ctxt_p;
     metric_set = local_set_create(ctxt->producer_name, &ctxt->auth, &self->cid, self->schema);
     if (metric_set == NULL) {
-      log_fn(LDMSD_LERROR, SAMP " " SUB_SAMP " %s: failed to create metric set\n",
+      log_fn(LDMSD_LERROR, "%s %s %s: failed to create metric set\n", SAMP, SUB_SAMP,
              __func__);
       err_code = ENOMEM;
       goto out1;
@@ -172,14 +172,14 @@ static int local_sample(fulldump_sub_ctxt_p self)
   handle = ldms_metric_get(metric_set, schema_ids[METRIC_LIST_ID]);
   ldms_list_purge(metric_set, handle);
   while (fgets(buf, sizeof(buf), sf)) {
-    // log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP "%s: parsing line in %s: %s\n",
+    // log_fn(LDMSD_LDEBUG, "%s %s %s: parsing line in %s: %s\n", SAMP, SUB_SAMP,
     //         __func__, source_path, buf);
     rc = sscanf(buf, "%" QUOTE_VALUE(MAXNAMESIZE) "s %ld %" QUOTE_VALUE(MAXNAMESIZE) "s %ld %ld %ld %ld %ld %ld %ld",
                 nid, &refs, state, &last, &max, &rtr, &min_rtr, &tx, &min_tx, &queue);
     // log_fn(LDMSD_LDEBUG, "Result: %s %ld %s %ld %ld %ld %ld %ld %ld %ld",
     //        nid, refs, state, last, max, rtr, min_rtr, tx, min_tx, queue);
     if (rc != 10) {
-      log_fn(LDMSD_LWARNING, SAMP " " SUB_SAMP "%s: failed to parse line in %s (rc: %d): %s\n",
+      log_fn(LDMSD_LWARNING, "%s %s %s: failed to parse line in %s (rc: %d): %s\n", SAMP, SUB_SAMP,
              __func__, source_path, rc, buf);
       err_code = ENOMSG;
       goto out2;
@@ -214,27 +214,27 @@ out1:
 
 static int config(fulldump_sub_ctxt_p self)
 {
-  log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP ":%s() called\n", __func__);
+  log_fn(LDMSD_LDEBUG, "%s %s :%s() called\n", SAMP, SUB_SAMP, __func__);
   struct lnet_extra *extra = malloc(sizeof(struct lnet_extra));
   if (extra == NULL) {
-    log_fn(LDMSD_LERROR, SAMP " " SUB_SAMP " %s: out of memory\n", __func__);
+    log_fn(LDMSD_LERROR, "%s %s %s: out of memory\n", SAMP, SUB_SAMP, __func__);
     return ENOMEM;
   }
   extra->metric_set = NULL;
   self->extra = extra;
-  log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP " %s: exiting normally\n", __func__);
+  log_fn(LDMSD_LDEBUG, "%s %s %s: exiting normally\n", SAMP, SUB_SAMP, __func__);
   return 0;
 }
 
 
 static int sample(fulldump_sub_ctxt_p self)
 {
-  log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP ":%s() called\n", __func__);
+  log_fn(LDMSD_LDEBUG, "%s %s :%s() called\n", SAMP, SUB_SAMP, __func__);
   struct lnet_extra *extra = self->extra;
   if (self->schema == NULL) {
-    log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP " %s: calling schema init\n", __func__);
+    log_fn(LDMSD_LDEBUG, "%s %s %s: calling schema init\n", SAMP, SUB_SAMP, __func__);
     if (local_schema_init(self) < 0) {
-      log_fn(LDMSD_LERROR, SAMP " " SUB_SAMP " %s: general schema create failed\n", __func__);
+      log_fn(LDMSD_LERROR, "%s %s %s: general schema create failed\n", SAMP, SUB_SAMP, __func__);
       return ENOMEM;
     }
   }
@@ -244,7 +244,7 @@ static int sample(fulldump_sub_ctxt_p self)
 
 static void term(fulldump_sub_ctxt_p self)
 {
-  log_fn(LDMSD_LDEBUG, SAMP " term() called\n");
+  log_fn(LDMSD_LDEBUG, "%s  term() called\n", SAMP);
   struct lnet_extra *extra = self->extra;
   fulldump_general_destroy_set(extra->metric_set);
   fulldump_general_schema_fini(self);

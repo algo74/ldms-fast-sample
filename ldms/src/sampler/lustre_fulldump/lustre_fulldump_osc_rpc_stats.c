@@ -135,19 +135,19 @@ static int _read_one_metric_value_line(FILE *sf, const char *prefix, hf_rpc_sing
   uint64_t val;
   int rc;
   if (fgets(buf, sizeof(buf), sf) == NULL) {
-    log_fn(LDMSD_LWARNING, SAMP " " SUB_SAMP "%s: failed on read \"%s\" from %s\n",
+    log_fn(LDMSD_LWARNING, "%s %s%s: failed on read \"%s\" from %s\n", SAMP, SUB_SAMP,
            __func__, prefix, source_path);
     return -1;
   }
   size_t pref_len = strlen(prefix);
   if (strncmp(buf, prefix, pref_len) != 0) {
-    log_fn(LDMSD_LWARNING, SAMP " " SUB_SAMP "%s: failed to parse line in %s (not %s): %s\n",
+    log_fn(LDMSD_LWARNING, "%s %s%s: failed to parse line in %s (not %s): %s\n", SAMP, SUB_SAMP,
            __func__, source_path, prefix, buf);
     return -2;
   }
   rc = sscanf(buf+pref_len+1, "%lu", &val);
   if (rc != 1) {
-    log_fn(LDMSD_LWARNING, SAMP " " SUB_SAMP "%s: failed to parse line \"%s\" in %s: %s\n",
+    log_fn(LDMSD_LWARNING, "%s %s%s: failed to parse line \"%s\" in %s: %s\n", SAMP, SUB_SAMP,
            __func__, prefix, source_path, buf);
     return -3;
   }
@@ -161,7 +161,7 @@ static hf_rpc_data_t *hf_rpc_data_create()
 {
   hf_rpc_data_t *data = calloc(1, sizeof(hf_rpc_data_t));
   if (!data) {
-    log_fn(LDMSD_LERROR, SAMP " " SUB_SAMP " %s: calloc failed\n", __func__);
+    log_fn(LDMSD_LERROR, "%s %s %s: calloc failed\n", SAMP, SUB_SAMP, __func__);
     return NULL;
   }
   return data;
@@ -172,26 +172,26 @@ static void hf_rpc_data_destroy(hf_rpc_data_t *data)
   free(data);
 }
 
-static void hf_rpc_data_on_timer(struct server_data *server)
+static void hf_rpc_data_on_timer(struct source_data *server)
 {
   hf_rpc_data_t *data = server->hf_data;
-  log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP " %s: %s\n", __func__, server->name);
+  log_fn(LDMSD_LDEBUG, "%s %s %s: %s\n", SAMP, SUB_SAMP, __func__, server->name);
   char *source_path = server->file_path;
   FILE *sf;
   char buf[512];
   int rc;
   uint64_t val;
-  log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP ": %s: file %s\n", __func__, source_path);
+  log_fn(LDMSD_LDEBUG, "%s %s: %s: file %s\n", SAMP, SUB_SAMP, __func__, source_path);
 
   sf = fopen(source_path, "r");
   if (sf == NULL) {
-    log_fn(LDMSD_LWARNING, SAMP " " SUB_SAMP "%s: file %s not found\n",
+    log_fn(LDMSD_LWARNING, "%s %s%s: file %s not found\n", SAMP, SUB_SAMP,
            __func__, source_path);
     return;
   }
   // reading the first line (snapshot_time)
   if (fgets(buf, sizeof(buf), sf) == NULL) {
-    log_fn(LDMSD_LWARNING, SAMP " " SUB_SAMP "%s: failed on read snapshot time from %s\n",
+    log_fn(LDMSD_LWARNING, "%s %s%s: failed on read snapshot time from %s\n", SAMP, SUB_SAMP,
            __func__, source_path);
     goto out1;
   }
@@ -217,10 +217,10 @@ out1:
   fclose(sf);
 }
 
-static void hf_rpc_data_on_sample(struct server_data *server)
+static void hf_rpc_data_on_sample(struct source_data *server)
 {
   hf_rpc_data_t *data = server->hf_data;
-  log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP " %s: %s\n", __func__, server->name);
+  log_fn(LDMSD_LDEBUG, "%s %s %s: %s\n", SAMP, SUB_SAMP, __func__, server->name);
   ldms_set_t metric_set = server->hf_metric_set;
   ldms_transaction_begin(metric_set);
   jobid_helper_metric_update(metric_set);
@@ -278,7 +278,7 @@ inline static int _parse_histogram(char *metric_name, char *buf, size_t buf_size
       }
       rc = sscanf(buf, "%lu:%lu%*[^|]|%lu", &val1, &val2, &val3);
       if (rc != 3) {
-        log_fn(LDMSD_LWARNING, SAMP " " SUB_SAMP "%s: failed to parse line in %s (pages per rpc): %s\n",
+        log_fn(LDMSD_LWARNING, "%s %s%s: failed to parse line in %s (pages per rpc): %s\n", SAMP, SUB_SAMP,
                __func__, source_path, buf);
         return ENOMSG;
       }
@@ -315,24 +315,24 @@ static int local_sample(const char *source_path, ldms_set_t metric_set)
   uint64_t val1, val2, val3, val4;
   int index;
 
-  log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP ": %s: file %s\n", __func__, source_path);
+  log_fn(LDMSD_LDEBUG, "%s %s: %s: file %s\n", SAMP, SUB_SAMP, __func__, source_path);
 
   sf = fopen(source_path, "r");
   if (sf == NULL) {
-    log_fn(LDMSD_LWARNING, SAMP " " SUB_SAMP "%s: file %s not found\n",
+    log_fn(LDMSD_LWARNING, "%s %s%s: file %s not found\n", SAMP, SUB_SAMP,
            __func__, source_path);
     return ENOENT;
   }
   // reading the first line (snapshot_time)
   if (fgets(buf, sizeof(buf), sf) == NULL) {
-    log_fn(LDMSD_LWARNING, SAMP " " SUB_SAMP "%s: failed on read from %s\n",
+    log_fn(LDMSD_LWARNING, "%s %s%s: failed on read from %s\n", SAMP, SUB_SAMP,
            __func__, source_path);
     err_code = ENOMSG;
     goto out1;
   }
   rc = sscanf(buf, "%64s %lu.%lu", str1, &val1, &val2);
   if (rc != 3 || strncmp(str1, "snapshot_time:", MAXNAMESIZE) != 0) {
-    log_fn(LDMSD_LWARNING, SAMP " " SUB_SAMP ": first line in %s is not \"snapshot_time\": %.512s\n",
+    log_fn(LDMSD_LWARNING, "%s %s: first line in %s is not \"snapshot_time\": %.512s\n", SAMP, SUB_SAMP,
            source_path, str1, buf);
     err_code = ENOMSG;
     goto out1;
@@ -373,30 +373,30 @@ out1:
 
 static int sample(fulldump_sub_ctxt_p self)
 {
-  log_fn(LDMSD_LDEBUG, SAMP  " " SUB_SAMP " %s() called\n", __func__);
+  log_fn(LDMSD_LDEBUG, "%s %s %s() called\n", SAMP, SUB_SAMP, __func__);
   struct xxc_extra *extra = self->extra;
   if (self->schema == NULL) {
-    log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP " %s: calling schema init\n", __func__);
+    log_fn(LDMSD_LDEBUG, "%s %s %s: calling schema init\n", SAMP, SUB_SAMP, __func__);
     if (local_schema_init(self) < 0) {
-      log_fn(LDMSD_LERROR, SAMP " " SUB_SAMP " %s schema create failed\n", __func__);
+      log_fn(LDMSD_LERROR, "%s %s %s schema create failed\n", SAMP, SUB_SAMP, __func__);
       return ENOMEM;
 
     }
   }
   if (extra->hf_schema == NULL) {
-    log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP " %s: hf schema init\n", __func__);
+    log_fn(LDMSD_LDEBUG, "%s %s %s: hf schema init\n", SAMP, SUB_SAMP, __func__);
     if (hf_schema_init(self, "lustre_fulldump_osc_" SUB_SAMP "_hf", hf_schema_templlate, hf_schema_ids) < 0) {
-      log_fn(LDMSD_LERROR, SAMP " " SUB_SAMP " %s hf schema create failed\n", __func__);
+      log_fn(LDMSD_LERROR, "%s %s %s hf schema create failed\n", SAMP, SUB_SAMP, __func__);
       return ENOMEM;
     }
   }
   hf_servers_sample(extra);
   // FIXME: make sure that the path contains the right files; until then, don't update the path
   // if (0 == update_existing_path(&current_path, paths, paths_len)) {
-  //   log_fn(LDMSD_LWARNING, SAMP  " " SUB_SAMP " %s: no path found\n", __func__);
+  //   log_fn(LDMSD_LWARNING, "%s %s %s: no path found\n", SAMP, SUB_SAMP, __func__);
   //   return 0;
   // };
-  log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP " %s calling refresh\n", __func__);
+  log_fn(LDMSD_LDEBUG, "%s %s %s calling refresh\n", SAMP, SUB_SAMP, __func__);
   int err = hf_hist_servers_refresh(&extra->source_tree, self, current_path);
   if (err) /* running out of set memory is an error */
     return err;

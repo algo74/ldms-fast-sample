@@ -13,7 +13,7 @@
 
 #include "lustre_fulldump.h"
 
-int fulldump_general_schema_init(fulldump_sub_ctxt_p self, char *schema_name,
+int fulldump_general_schema_init(fulldump_sub_ctxt_p self, const char *schema_name,
                                  struct ldms_metric_template_s *schema_template, int *schema_ids,
                                  struct ldms_metric_template_s *metric_record_template, int *metric_record_ids,
                                  int record_idx, int list_idx, size_t maxlistsize);

@@ -38,35 +38,66 @@
 
 // #define _GNU_SOURCE
 
-
-struct xxc_extra {
-  struct rbt source_tree; /* red-black tree root for sources */
-  char *source_category;  /* filename of the source */
+enum node_type {
+  NODE_TYPE_SERVER,
+  NODE_TYPE_FS,
+  NODE_TYPE_SINGLE_SOURCE,
+  NODE_TYPE_LEGACY,
 };
 
-struct server_data {
-  char *name;
-  char *fs_name;
+struct source_data;
+
+struct source_data {
+  char *name;        /* unique name of the source; freed when node destroyed */
+  char *fs_name;     /* name of the filesystem; freed when node destroyed */
   int server_idx;
-  char *server_id;
-  char *dir_path;
-  char *file_path;
-  ldms_set_t metric_set; /* a pointer */
+  char *server_id;   /* id of the server as string; freed when node destroyed */
+  // char *dir_path;    /* path to the directory; freed when node destroyed TODO: get rid of it as it is unused */
+  char *file_path;   /* path to the file; freed when node destroyed */
+  ldms_set_t metric_set; /* a pointer; freed when node destroyed */
   struct rbn tree_node;
 };
 
-int server_extra_config(fulldump_sub_ctxt_p self, char *source_category);
+struct xxc_extra {
+  union {
+    struct rbt source_tree;             /* red-black tree root for sources */
+    struct source_data single_source;   /* data if only one source */
+  };
+  const char *source_category;  /* filename of the source; borrowed, someone else should free after destroying */
+  const char *source_root;      /* root directory of the source; borrowed, someone else should free after destroying */
+  int dir_once_log;       /* flag to log missing directory once */
+  /* extra fields used  by fd_general_stats */
+  // TODO: implement to use uniformly
+  enum node_type type;
+  int (*single_sample)(fulldump_sub_ctxt_p self, struct source_data *source, void *virtual_args);
+  void *virtual_args;     /* arguments for single_sample; borrowed, someone else should free after destroying */
+};
 
-void server_general_term(fulldump_sub_ctxt_p self);
+int xxc_legacy_extra_config(fulldump_sub_ctxt_p self, const char *source_category, const char *source_root);
 
-void servers_destroy(struct rbt *source_tree);
+int xxc_extra_config(fulldump_sub_ctxt_p self,
+                     const char *source_category,
+                     const char *source_root,
+                     enum node_type type,
+                     int (*single_sample)(fulldump_sub_ctxt_p self, struct source_data *source, void *virtual_args),
+                     void *virtual_args);
+
+void xxc_general_term(fulldump_sub_ctxt_p self);
+void xxc_general_multisource_term(fulldump_sub_ctxt_p self);
+void multisource_destroy(struct rbt *source_tree);
+
+ldms_set_t xxc_general_set_create(fulldump_sub_ctxt_p self, struct source_data *node);
+
 
 /** List subdirectories to get all metric files.
  * Create data structures for any file that we
  * have not seen, and delete any that we no longer see.
  */
-int servers_refresh(struct rbt *source_tree, fulldump_sub_ctxt_p self, const char *path);
+int multisource_refresh(struct rbt *source_tree, fulldump_sub_ctxt_p self, enum node_type type);
+int xxc_legacy_servers_refresh(struct rbt *source_tree, fulldump_sub_ctxt_p self);
 
-void servers_sample(struct xxc_extra *xxc_extra, int (*single_sample)(const char *, ldms_set_t));
+void xxc_general_sample(fulldump_sub_ctxt_p self);
+void xxc_legacy_sample(struct xxc_extra *xxc_extra, int (*single_sample)(const char *, ldms_set_t));
+
 
 #endif /* __LUSTRE_FULLDUMP_OSC_GENERAL_H */

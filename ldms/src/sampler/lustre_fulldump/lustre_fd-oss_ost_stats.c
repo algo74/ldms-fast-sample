@@ -31,7 +31,7 @@ static const char *const paths[] = {
     "/sys/kernel/debug/lustre/osc" /* lustre 2.12 and later */
 };
 static const int paths_len = sizeof(paths) / sizeof(paths[0]);
-static const char *current_path = "/sys/kernel/debug/lustre/osc"; // FIXME: this is a hack
+static const char *current_path = "/sys/kernel/debug/lustre/osc";  // FIXME: this is a hack
 
 
 static struct ldms_metric_template_s schema_metric_record_templlate[] = {
@@ -95,21 +95,21 @@ static int osc_stats_sample(const char *stats_path, ldms_set_t metric_set)
 
   sf = fopen(stats_path, "r");
   if (sf == NULL) {
-    log_fn(LDMSD_LWARNING, "%s%s: file %s not found\n", SAMP,
+    log_fn(LDMSD_LWARNING, "%s %s: file %s not found\n", SAMP,
            __func__, stats_path);
     return ENOENT;
   }
   // reading the first line (snapshot_time)
   if (fgets(buf, sizeof(buf), sf) == NULL) {
-    log_fn(LDMSD_LWARNING, "%s%s: failed on read from %s\n", SAMP,
+    log_fn(LDMSD_LWARNING, "%s %s: failed on read from %s\n", SAMP,
            __func__, stats_path);
     err_code = ENOMSG;
     goto out1;
   }
-  // log_fn(LDMSD_LDEBUG, "%s: llite_stats_sample: buf: %500s\n", SAMP, buf);
+  // log_fn(LDMSD_LDEBUG, "%s : llite_stats_sample: buf: %500s\n", SAMP, buf);
   rc = sscanf(buf, "%64s %lu.%lu", str1, &val1, &val2);
   if (rc != 3 || strncmp(str1, "snapshot_time", MAXNAMESIZE) != 0) {
-    log_fn(LDMSD_LWARNING, "%s: first line in %s is not \"snapshot_time\": %.512s\n", SAMP,
+    log_fn(LDMSD_LWARNING, "%s : first line in %s is not \"snapshot_time\": %.512s\n", SAMP,
            stats_path, buf);
     err_code = ENOMSG;
     goto out1;
@@ -129,7 +129,7 @@ static int osc_stats_sample(const char *stats_path, ldms_set_t metric_set)
     } else if (rc == 3) {
       val3 = 0;
     } else if (rc != 4) {
-      log_fn(LDMSD_LWARNING, "%s: failed to parse line in %s: %s\n", SAMP,
+      log_fn(LDMSD_LWARNING, "%s : failed to parse line in %s: %s\n", SAMP,
              stats_path, buf);
       err_code = ENOMSG;
       goto out2;
@@ -157,23 +157,22 @@ out1:
 
 static int sample(fulldump_sub_ctxt_p self)
 {
-  log_fn(LDMSD_LDEBUG, "%s %s() called\n", SAMP, __func__);
+  log_fn(LDMSD_LDEBUG, "%s  %s() called\n", SAMP, __func__);
   struct xxc_extra *extra = self->extra;
   if (self->schema == NULL) {
-    log_fn(LDMSD_LDEBUG, "%s %s: calling schema init\n", SAMP, __func__);
+    log_fn(LDMSD_LDEBUG, "%s  %s: calling schema init\n", SAMP, __func__);
     if (osc_stats_schema_init(self) < 0) {
-      log_fn(LDMSD_LERROR, "%s %s general schema create failed\n", SAMP, __func__);
+      log_fn(LDMSD_LERROR, "%s  %s general schema create failed\n", SAMP, __func__);
       return ENOMEM;
-
     }
   }
   // FIXME: make sure that the path contains the right files; until then, don't update the path
   // if (0 == update_existing_path(&current_path, paths, paths_len)) {
-  //   log_fn(LDMSD_LWARNING, "%s %s: no path found\n", SAMP, __func__);
+  //   log_fn(LDMSD_LWARNING, "%s  %s: no path found\n", SAMP, __func__);
   //   return 0;
   // };
-  log_fn(LDMSD_LDEBUG, "%s %s calling refresh\n", SAMP, __func__);
-  int err = xxc_legacy_servers_refresh(&extra->source_tree, self);
+  log_fn(LDMSD_LDEBUG, "%s  %s calling refresh\n", SAMP, __func__);
+  int err = xxc_legacy_servers_refresh(&extra->source_tree, self, current_path);
   if (err) /* running out of set memory is an error */
     return err;
 
@@ -182,9 +181,9 @@ static int sample(fulldump_sub_ctxt_p self)
 }
 
 
-int lustre_fulldump_osc_stats_config(fulldump_sub_ctxt_p self)
+int lustre_fulldump_oss_ost_stats_config(fulldump_sub_ctxt_p self)
 {
-  self->sample = (int (*)(void *self)) sample;
-  self->term = (int (*)(void *self)) xxc_general_multisource_term;
-  return xxc_legacy_extra_config(self, "stats", current_path);
+  self->sample = (int (*)(void *self))sample;
+  self->term = (int (*)(void *self))xxc_general_multisource_term;
+  return xxc_legacy_extra_config(self, "stats");
 }
