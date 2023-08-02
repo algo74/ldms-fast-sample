@@ -38,7 +38,8 @@ void fulldump_general_destroy_set(ldms_set_t set);
  * \param[out] fs_name The filesystem name (eg. testfs)
  * \param[out] server_idx The index of the server (eg. 0 for OST0000)
  * \param[out] server_id The id of the server (eg. OST0000)
- * \return number of dashes found in the OSC name (3 is success)
+ * \return 3 on success TODO: refactor (it used to be number of dashes in the name)
+ * \return or  0 if the name is not in the expected format
  * \return or -1 on allocation error
  * \return or -2 if the OSC name is not in the expected format
  */

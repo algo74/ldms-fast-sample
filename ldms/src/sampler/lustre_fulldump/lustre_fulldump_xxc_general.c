@@ -20,6 +20,7 @@
 #include "jobid_helper.h"
 // #include "ldms.h"
 // #include "ldmsd.h"
+#include "ldms_missing.h"
 #include "lustre_fulldump.h"
 #include "lustre_fulldump_general.h"
 #include "lustre_fulldump_xxc_general.h"
@@ -138,19 +139,21 @@ ldms_set_t xxc_general_set_create(fulldump_sub_ctxt_p self, struct source_data *
 
   log_fn(LDMSD_LDEBUG, "%s: %s()\n", SAMP, __func__);
   struct xxc_extra *extra = self->extra;
+  char *schema_name = ldms_schema_name_get(self->schema);
   if (NODE_TYPE_SINGLE_SOURCE == extra->type) {
-    snprintf(instance_name, sizeof(instance_name), "%s/%s/%s",
-             self->sampl_ctxt_p->producer_name, SAMP, node->file_path);
+    snprintf(instance_name, sizeof(instance_name), "%s/%s",
+             self->sampl_ctxt_p->producer_name, schema_name);
   } else {
     const char *category = extra->source_category;
     if (NODE_TYPE_FS == extra->type) {
-      snprintf(instance_name, sizeof(instance_name), "%s/%s/%s/%s",
-              self->sampl_ctxt_p->producer_name, SAMP, node->fs_name, category);
+      snprintf(instance_name, sizeof(instance_name), "%s/%s/%s",
+              self->sampl_ctxt_p->producer_name, schema_name, node->fs_name);
     } else {
-      snprintf(instance_name, sizeof(instance_name), "%s/%s/%s/%s/%s",
-              self->sampl_ctxt_p->producer_name, SAMP, node->fs_name, node->server_id, category);
+      snprintf(instance_name, sizeof(instance_name), "%s/%s/%s/%s",
+              self->sampl_ctxt_p->producer_name, schema_name, node->fs_name, node->server_id);
     }
   }
+  log_fn(LDMSD_LDEBUG, "%s: %s() instance_name=%s\n", SAMP, __func__, instance_name);
   set = fulldump_general_create_set(log_fn, self->sampl_ctxt_p->producer_name, instance_name, &self->sampl_ctxt_p->auth, &self->cid, self->schema);
   if (!set) {
     return NULL;
@@ -178,7 +181,7 @@ static int _split_fs_name(char *input, char **fs_name)
   char *name_;
   char *first = strchr(input, '-');
   if (first == NULL) {
-    return 0;
+    first = input + strlen(input);
   }
   name_ = strndup(input, first - input);
   if (name_ == NULL) {

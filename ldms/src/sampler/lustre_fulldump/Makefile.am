@@ -14,6 +14,8 @@ liblustre_fulldump_general_la_SOURCES = \
 				consts.h \
 				high_freq_sampler.c \
 				high_freq_sampler.h \
+				ldms_missing.h \
+				ldms_missing.c \
 				lustre_fd-general_stats.c \
 				lustre_fd-general_stats.h \
 				lustre_fulldump_context.h \

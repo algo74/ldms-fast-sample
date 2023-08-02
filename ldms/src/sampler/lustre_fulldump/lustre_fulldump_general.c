@@ -157,12 +157,12 @@ int fulldump_split_server_name(char *server_name, char **fs_name, int *server_in
   }
   char *second = strchr(first + 1, '-');
   if (second == NULL) {
-    return 1;
+    second = server_name + strlen(server_name);
   }
-  char *third = strchr(second + 1, '-');
-  if (third == NULL) {
-    return 2;
-  }
+  // char *third = strchr(second + 1, '-');
+  // if (third == NULL) {
+  //   return 2;
+  // }
   // parse the fields
   int rc = sscanf(first + 1, "%*3s%d-", &idx_);
   if (rc != 1) {

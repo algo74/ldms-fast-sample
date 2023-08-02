@@ -93,19 +93,19 @@ static int ost_oss_ost_out_config(fulldump_sub_ctxt_p self)
 
 static int ost_oss_ost_seq_config(fulldump_sub_ctxt_p self)
 {
-  fd_general_stats_config(self, "/sys/kernel/debug/lustre/ost/OSS/ost_se q", NODE_TYPE_SINGLE_SOURCE, "lustre_oss_fuldump_ost_oss_ost_se q_stats");
+  fd_general_stats_config(self, "/sys/kernel/debug/lustre/ost/OSS/ost_seq", NODE_TYPE_SINGLE_SOURCE, "lustre_oss_fuldump_ost_oss_ost_seq_stats");
 }
 
 
 static int obdfilter_config(fulldump_sub_ctxt_p self)
 {
-  fd_general_stats_config(self, "/proc/fs/lustre/obdfilter", NODE_TYPE_FS, "lustre_oss_fuldump_obdfilter_stats");
+  fd_general_stats_config(self, "/proc/fs/lustre/obdfilter", NODE_TYPE_SERVER, "lustre_oss_fuldump_obdfilter_stats");
 }
 
 
 static int osd_ldiskfs_stats_config(fulldump_sub_ctxt_p self)
 {
-  fd_general_stats_config(self, "/proc/fs/lustre/osd-ldiskfs", NODE_TYPE_FS, "lustre_oss_fuldump_osd_ldiskfs_stats");
+  fd_general_stats_config(self, "/proc/fs/lustre/osd-ldiskfs", NODE_TYPE_SERVER, "lustre_oss_fuldump_osd_ldiskfs_stats");
 }
 
 static int config(struct ldmsd_plugin *self,
