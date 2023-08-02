@@ -84,11 +84,11 @@ int fd_general_stats_single_sample(fulldump_sub_ctxt_p self, struct source_data 
     goto out1;
   }
   // if it was the last line, return
-  if (feof(sf)) {
+  if (!fgets(buf, sizeof(buf), sf)) {
     log_fn(LDMSD_LDEBUG, "%s : %s: file %s contains only snapshot time\n", SAMP, __func__, stats_path);
     goto out1;
   }
-
+  // else, make sure we instantiate the schema and the set and parse the rest of the file
   if (self->schema == NULL) {
     log_fn(LDMSD_LDEBUG, "%s %s: calling %s schema init\n", SAMP, __func__, args->schema_name);
     if (fulldump_general_schema_init(self,
@@ -120,7 +120,7 @@ int fd_general_stats_single_sample(fulldump_sub_ctxt_p self, struct source_data 
   ldms_metric_set_u64(metric_set, schema_ids[SNAPSHOT_NS_ID], val2);
   handle = ldms_metric_get(metric_set, schema_ids[METRIC_LIST_ID]);
   ldms_list_purge(metric_set, handle);
-  while (fgets(buf, sizeof(buf), sf)) {
+  do {
     rc = sscanf(buf, "%64s %lu samples [%*[^]]] %*u %*u %lu %lu",
                 str1, &val1, &val2, &val3);
     if (rc == 2) {
@@ -145,7 +145,7 @@ int fd_general_stats_single_sample(fulldump_sub_ctxt_p self, struct source_data 
     ldms_record_set_u64(rec_inst, schema_metric_record_ids[METRIC_SUM_ID], val2);
     ldms_record_set_u64(rec_inst, schema_metric_record_ids[METRIC_SUM2_ID], val3);
     ldms_list_append_record(metric_set, handle, rec_inst);
-  }
+  } while (fgets(buf, sizeof(buf), sf));
 
 out2:
   ldms_transaction_end(metric_set);
