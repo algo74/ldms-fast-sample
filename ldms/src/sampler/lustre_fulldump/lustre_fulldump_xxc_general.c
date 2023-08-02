@@ -73,6 +73,8 @@ int xxc_extra_config(fulldump_sub_ctxt_p self,
     // extra->single_source.dir_path = source_root;
     // TODO: what would be the proper name for the single source?
     extra->single_source.name = extra->single_source.file_path;
+    extra->single_source.fs_name = "";
+    extra->single_source.server_id = "";
   } else {
     rbt_init(&extra->source_tree, string_comparator);
   }

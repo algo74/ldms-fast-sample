@@ -143,9 +143,9 @@ static int sample(struct ldmsd_sampler *self)
     log_fn(LDMSD_LDEBUG, "%s calling sub_ctxt sample()\n", SAMP);
     err = sub_ctxt_p->sample(sub_ctxt_p);
     if (err)
-      return err;
+      log_fn(LDMSD_LERROR, "%s: sample: sub_ctxt sample failed; err code %d.\n", SAMP, err);
   }
-  return err;
+  return 0;
 }
 
 
