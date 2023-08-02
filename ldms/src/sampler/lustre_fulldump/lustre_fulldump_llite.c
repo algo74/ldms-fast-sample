@@ -36,8 +36,6 @@
 #define PATH_MAX 4096
 #endif
 
-ldmsd_msg_log_f log_fn;
-
 /* locations where llite stats might be found */
 static const char *const llite_paths[] = {
     "/proc/fs/lustre/llite",         /* lustre pre-2.12 */

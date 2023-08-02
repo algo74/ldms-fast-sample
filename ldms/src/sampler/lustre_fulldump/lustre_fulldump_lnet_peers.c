@@ -46,8 +46,6 @@
 #define QUOTE_VALUE(str) QUOTE(str)
 #endif
 
-ldmsd_msg_log_f log_fn;
-
 static const char *current_path = "/sys/kernel/debug/lnet";
 
 static struct ldms_metric_template_s schema_metric_record_templlate[] = {

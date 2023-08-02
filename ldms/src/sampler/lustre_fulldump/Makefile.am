@@ -19,6 +19,7 @@ liblustre_fulldump_general_la_SOURCES = \
 				lustre_fulldump_context.h \
 				lustre_fulldump_general.c \
 				lustre_fulldump_general.h \
+				lustre_fulldump_globals.c \
 				lustre_fulldump_xxc_general.c \
 				lustre_fulldump_xxc_general.h \
 				lustre_fulldump_xxc_hf_hist.c \

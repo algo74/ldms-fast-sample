@@ -26,7 +26,6 @@
 #define _GNU_SOURCE
 
 #define SAMPLER_NAME "lustre_oss_fulldump"
-char *SAMP = SAMPLER_NAME;
 
 struct fulldump_ctxt samp_ctxt = {0};
 LIST_HEAD(fulldump_sub_ctxt_list, fulldump_sub_ctxt);
@@ -221,6 +220,7 @@ static struct ldmsd_sampler llite_plugin = {
 struct ldmsd_plugin *get_plugin(ldmsd_msg_log_f pf)
 {
   log_fn = pf;
+  SAMP = SAMPLER_NAME;
   log_fn(LDMSD_LDEBUG, "%s get_plugin() called\n", SAMP);
   gethostname(samp_ctxt.producer_name, sizeof(samp_ctxt.producer_name));
 
