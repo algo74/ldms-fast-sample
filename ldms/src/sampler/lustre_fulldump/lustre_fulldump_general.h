@@ -59,4 +59,12 @@ int update_existing_path(const char **current_path, const char *const *path_opti
 */
 int empty_line(char *line);
 
+/**
+ * \brief compare two strings ignoring space areas differences
+ * \param[in] s1 The first string
+ * \param[in] s2 The second string
+ * \return 1 if the strings are equal ignoring spaces, 0 otherwise
+ */
+int compare_strings_ignore_spaces(const char *s1, const char *s2)
+
 #endif /* __LUSTRE_FULLDUMP_GENERAL_H */

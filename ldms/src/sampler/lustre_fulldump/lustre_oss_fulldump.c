@@ -17,11 +17,12 @@
 #include "ldmsd.h"
 #include "config.h"
 #include "lustre_fulldump.h"
+#include "jobid_helper.h"
 
 #include "lustre_fulldump_xxc_general.h"
 #include "lustre_fd-general_stats.h"
+#include "lustre_oss_fd-osd_ldiskfs_brw_stats.h"
 
-#include "jobid_helper.h"
 
 #define _GNU_SOURCE
 
@@ -158,7 +159,8 @@ static int config(struct ldmsd_plugin *self,
   err = add_sub_ctxt(osd_ldiskfs_stats_config);
   if (err) return err;
 
-
+  err = add_sub_ctxt(lustre_oss_fd_ldiskfs_brw_stats_config);
+  if (err) return err;
 
   log_fn(LDMSD_LDEBUG, "%s config() all done\n", SAMP);
   samp_ctxt.configured = true;

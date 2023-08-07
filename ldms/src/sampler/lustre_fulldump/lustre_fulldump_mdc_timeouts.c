@@ -64,7 +64,7 @@ enum {
 };
 
 
-static int local_schema_init(fulldump_sub_ctxt_p self)
+static int _schema_init(fulldump_sub_ctxt_p self)
 {
   return fulldump_general_schema_init(self, "lustre_fulldump_mdc_timeouts", schema_templlate, schema_ids,
                                       schema_metric_record_templlate, schema_metric_record_ids,
@@ -182,7 +182,7 @@ static int sample(fulldump_sub_ctxt_p self)
   struct xxc_extra *extra = self->extra;
   if (self->schema == NULL) {
     log_fn(LDMSD_LDEBUG, "%s  %s: calling schema init\n", SAMP, __func__);
-    if (local_schema_init(self) < 0) {
+    if (_schema_init(self) < 0) {
       log_fn(LDMSD_LERROR, "%s  %s general schema create failed\n", SAMP, __func__);
       return ENOMEM;
 

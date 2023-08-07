@@ -217,3 +217,45 @@ int empty_line(char *line)
   }
   return 1;
 }
+
+
+int compare_strings_ignore_spaces(const char *s1, const char *s2)
+{
+  // skip spaces at the beginning
+  while (isspace(*s1)) {
+    s1++;
+  }
+  while (isspace(*s2)) {
+    s2++;
+  }
+  while (*s1 != '\0' && *s2 != '\0') {
+    if (isspace(*s1) || isspace(*s2)) {
+      if (!(isspace(*s2) && isspace(*s1))) {
+        return 0;
+      }
+      while (isspace(*s1)) {
+        s1++;
+      }
+      while (isspace(*s2)) {
+        s2++;
+      }
+    } else if (*s1 != *s2) {
+      return 0;
+    } else {
+      s1++;
+      s2++;
+    }
+  }
+  // at least one string is finished
+  // but another may have only spaces left
+  while (isspace(*s1)) {
+    s1++;
+  }
+  while (isspace(*s2)) {
+    s2++;
+  }
+  if (*s1 == '\0' && *s2 == '\0') {
+    return 1;
+  }
+  return 0;
+}
