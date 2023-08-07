@@ -83,6 +83,8 @@ liblustre_oss_fulldump_la_SOURCES = \
 				lustre_fulldump_context.h \
 				lustre_fulldump_general.h \
         lustre_fulldump.h\
+				lustre_oss_fd-osd_ldiskfs_brw_stats.c \
+				lustre_oss_fd-osd_ldiskfs_brw_stats.h \
 				lustre_oss_fulldump.c
 
 liblustre_oss_fulldump_la_LIBADD = \
