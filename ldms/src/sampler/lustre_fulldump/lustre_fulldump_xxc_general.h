@@ -45,7 +45,7 @@ enum node_type {
   NODE_TYPE_LEGACY,
 };
 
-struct source_data;
+// struct source_data;
 
 struct source_data {
   char *name;        /* unique name of the source; freed when node destroyed */
