@@ -65,6 +65,6 @@ int empty_line(char *line);
  * \param[in] s2 The second string
  * \return 1 if the strings are equal ignoring spaces, 0 otherwise
  */
-int compare_strings_ignore_spaces(const char *s1, const char *s2)
+int compare_strings_ignore_spaces(const char *s1, const char *s2);
 
 #endif /* __LUSTRE_FULLDUMP_GENERAL_H */

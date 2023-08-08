@@ -8,11 +8,10 @@
 
 /**
  * @file lustre_fulldump_xxc_general.h
- * @brief Header file for lustre_fulldump_osc_general.c
+ * @brief Header file for lustre_fulldump_xxc_general.c
  * @details
  * This file contains the declarations for the functions that are used
  * by OSC sub-samplers and MDC samplers as well.
- * TODO: so the name may be misleading.
  */
 
 #ifndef __LUSTRE_FULLDUMP_OSC_GENERAL_H
