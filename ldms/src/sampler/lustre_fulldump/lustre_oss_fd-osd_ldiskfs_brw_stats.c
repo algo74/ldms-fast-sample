@@ -208,9 +208,9 @@ static int _single_sample(fulldump_sub_ctxt_p self, struct source_data *source, 
   }
   // log_fn(LDMSD_LDEBUG, "%s : llite_stats_sample: buf: %500s\n", SAMP, buf);
   rc = sscanf(buf, "%64s %lu.%lu", str1, &val1, &val2);
-  if (rc != 3 || strncmp(str1, "snapshot_time", MAXNAMESIZE) != 0) {
-    log_fn(LDMSD_LWARNING, "%s : first line in %s is not \", SAMPsnapshot_time\": %.512s\n",
-           stats_path, buf);
+  if (rc != 3 || strncmp(str1, "snapshot_time:", MAXNAMESIZE) != 0) {
+    log_fn(LDMSD_LWARNING, "%s : first line in %s is not \"snapshot time\": %.512s\n",
+           SAMP, stats_path, buf);
     err_code = ENOMSG;
     goto out1;
   }
