@@ -85,10 +85,7 @@ static int _schema_init(fulldump_sub_ctxt_p self)
 
 inline static int _start_of_histogram(char *buf, size_t buf_size, FILE *sf)
 {
-  if (compare_strings_ignore_spaces(buf, "read | write") == 0) {
-    return 1;
-  }
-  return 0;
+  return equal_strings_ignoring_spaces(buf, "read | write");
 }
 
 /**
@@ -139,7 +136,7 @@ inline static int _parse_histogram(char *buf, size_t buf_size, FILE *sf,
     char bin_label[MAXBINLABLESIZE + 1];
     rc = sscanf(buf, "%lu%" TOSTRING(MAXBINLABLESIZE) "s %lu%*[^|]|%lu", &val1, bin_label, &val2, &val3);
     if (rc != 4) {
-      log_fn(LDMSD_LWARNING, "%s %s%s: failed to parse line in %s (%s): %s\n", SAMP, SUB_SAMP,
+      log_fn(LDMSD_LWARNING, "%s %s %s: failed to parse line in %s (%s): %s\n", SAMP, SUB_SAMP,
               __func__, source_path, metric_name, buf);
       return ENOMSG;
     }

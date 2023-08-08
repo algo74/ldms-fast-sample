@@ -219,7 +219,7 @@ int empty_line(char *line)
 }
 
 
-int compare_strings_ignore_spaces(const char *s1, const char *s2)
+int equal_strings_ignoring_spaces(const char *s1, const char *s2)
 {
   // skip spaces at the beginning
   while (isspace(*s1)) {
