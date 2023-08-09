@@ -64,4 +64,7 @@ struct fd_general_stats_sample_args {
 int fd_general_stats_config(fulldump_sub_ctxt_p self, const char *path, enum node_type type,
                             const char *metric_name);
 
+int fd_general_stats_config_flex(fulldump_sub_ctxt_p self, const char *path, enum node_type type,
+                                 const char *metric_name, const char* stats_name);
+
 #endif /* FULLDUMP_GENERAL_STATS_H */

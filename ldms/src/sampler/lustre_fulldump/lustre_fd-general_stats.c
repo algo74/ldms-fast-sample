@@ -175,6 +175,12 @@ int fd_general_stats_term(fulldump_sub_ctxt_p self)
 int fd_general_stats_config(fulldump_sub_ctxt_p self, const char *path, enum node_type type,
                             const char *metric_name)
 {
+  return fd_general_stats_config_flex(self, path, type, metric_name, "stats");
+}
+
+int fd_general_stats_config_flex(fulldump_sub_ctxt_p self, const char *path, enum node_type type,
+                                 const char *metric_name, const char* stats_name)
+{
   int *schema_ids = calloc(METRIC_SCHEMA_LEN, sizeof(int));
   if (!schema_ids) {
     log_fn(LDMSD_LERROR, "%s %s: out of memory\n", SAMP, __func__);
@@ -196,7 +202,7 @@ int fd_general_stats_config(fulldump_sub_ctxt_p self, const char *path, enum nod
   args->schema_metric_record_ids = schema_metric_record_ids;
   self->sample = (int (*)(void *self))xxc_general_sample;
   self->term = (int (*)(void *self))fd_general_stats_term;
-  return xxc_extra_config(self, "stats", path, type, fd_general_stats_single_sample, args);
+  return xxc_extra_config(self, stats_name, path, type, fd_general_stats_single_sample, args);
 
   // free(args);
 fd_general_stats_config_out3:

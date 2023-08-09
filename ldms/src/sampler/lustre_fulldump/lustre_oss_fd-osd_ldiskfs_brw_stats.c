@@ -83,18 +83,49 @@ static int _schema_init(fulldump_sub_ctxt_p self)
 }
 
 
+inline static ldms_mval_t _get_handle_on_first_record(fulldump_sub_ctxt_p self, struct source_data *source, uint64_t sec, uint64_t nsec)
+{
+  // else, make sure we instantiate the schema and the set and parse the rest of the file
+  if (self->schema == NULL) {
+    log_fn(LDMSD_LDEBUG, "%s %s: calling %s schema init\n", SAMP, __func__, SCHEMA_NAME);
+    if (_schema_init(self) < 0) {
+      log_fn(LDMSD_LERROR, "%s_%s %s: general schema create failed\n", SAMP, SUB_SAMP, __func__);
+      return NULL;
+    }
+  }
+  if (source->metric_set == NULL) {
+    log_fn(LDMSD_LDEBUG, "%s %s: calling %s set create\n", SAMP, __func__, SCHEMA_NAME);
+    source->metric_set = xxc_general_set_create(self, source);
+    if (source->metric_set == NULL) {
+      log_fn(LDMSD_LERROR, "%s %s: set create failed (schema: %s, source: %s) \n",
+             SAMP, __func__, SCHEMA_NAME, source->name);
+      return NULL;
+    }
+  }
+  ldms_set_t metric_set = source->metric_set;
+  ldms_transaction_begin(metric_set);
+  jobid_helper_metric_update(metric_set);
+  ldms_metric_set_u64(metric_set, schema_ids[SNAPSHOT_SEC_ID], sec);
+  ldms_metric_set_u64(metric_set, schema_ids[SNAPSHOT_NS_ID], nsec);
+  ldms_mval_t handle = ldms_metric_get(metric_set, schema_ids[METRIC_LIST_ID]);
+  ldms_list_purge(metric_set, handle);
+  return handle;
+}
+
 inline static int _start_of_histogram(char *buf, size_t buf_size, FILE *sf)
 {
   return equal_strings_ignoring_spaces(buf, "read | write");
 }
+
 
 /**
  * \brief find and parse a part of the file that corresponds to one histogram
  * \param[in/out] buf A buffer to read lines into (must already contain a line from the file)
  * \return 0 on success, -1 if the end of file, errno on other error
  */
-inline static int _parse_histogram(char *buf, size_t buf_size, FILE *sf,
-                                   ldms_set_t metric_set, ldms_mval_t handle, const char *source_path)
+inline static int _parse_histogram(char *buf, size_t buf_size, FILE *sf, fulldump_sub_ctxt_p self,
+                                   struct source_data *source, uint64_t sec, uint64_t nsec,
+                                   ldms_mval_t *handle, const char *source_path)
 {
   int rc;
   uint64_t val1, val2, val3;
@@ -160,7 +191,13 @@ inline static int _parse_histogram(char *buf, size_t buf_size, FILE *sf,
                 __func__, source_path, metric_name, buf);
         return ENOMSG;
     }
-    ldms_mval_t rec_inst = ldms_record_alloc(metric_set, schema_ids[METRIC_RECORD_ID]);
+    if (*handle == NULL) {
+      *handle = _get_handle_on_first_record(self, source, sec, nsec);
+      if (*handle == NULL) {
+        return ENOMEM;
+      }
+    }
+    ldms_mval_t rec_inst = ldms_record_alloc(source->metric_set, schema_ids[METRIC_RECORD_ID]);
     if (!rec_inst) {
       return ENOTSUP;  // FIXME: implement resize
     }
@@ -169,7 +206,7 @@ inline static int _parse_histogram(char *buf, size_t buf_size, FILE *sf,
     ldms_record_set_u64(rec_inst, schema_metric_record_ids[METRIC_BIN_ID], val1);
     ldms_record_set_u64(rec_inst, schema_metric_record_ids[METRIC_READ_COUNT_ID], val2);
     ldms_record_set_u64(rec_inst, schema_metric_record_ids[METRIC_WRITE_COUNT_ID], val3);
-    ldms_list_append_record(metric_set, handle, rec_inst);
+    ldms_list_append_record(source->metric_set, *handle, rec_inst);
   }
   return -1;  // end of file and end of histogram
 }
@@ -184,8 +221,8 @@ static int _single_sample(fulldump_sub_ctxt_p self, struct source_data *source, 
   const char *stats_path = source->file_path;
   // struct fd_general_stats_sample_args *args = (struct fd_general_stats_sample_args *)virtual_args;
   int rc;
-  ldms_mval_t handle;
-  uint64_t val1, val2, val3, val4;
+  ldms_mval_t handle = NULL;
+  uint64_t val1, val2, val3, val4, sec, nsec;
   int index;
 
   log_fn(LDMSD_LDEBUG, "%s : %s: file %s\n", SAMP, __func__, stats_path);
@@ -204,7 +241,7 @@ static int _single_sample(fulldump_sub_ctxt_p self, struct source_data *source, 
     goto out1;
   }
   // log_fn(LDMSD_LDEBUG, "%s : llite_stats_sample: buf: %500s\n", SAMP, buf);
-  rc = sscanf(buf, "%64s %lu.%lu", str1, &val1, &val2);
+  rc = sscanf(buf, "%64s %lu.%lu", str1, &sec, &nsec);
   if (rc != 3 || strncmp(str1, "snapshot_time:", MAXNAMESIZE) != 0) {
     log_fn(LDMSD_LWARNING, "%s : first line in %s is not \"snapshot time\": %.512s\n",
            SAMP, stats_path, buf);
@@ -216,38 +253,38 @@ static int _single_sample(fulldump_sub_ctxt_p self, struct source_data *source, 
     log_fn(LDMSD_LDEBUG, "%s : %s: file %s contains only snapshot time\n", SAMP, __func__, stats_path);
     goto out1;
   }
-  // else, make sure we instantiate the schema and the set and parse the rest of the file
-  if (self->schema == NULL) {
-    log_fn(LDMSD_LDEBUG, "%s %s: calling %s schema init\n", SAMP, __func__, SCHEMA_NAME);
-    if (_schema_init(self) < 0) {
-      log_fn(LDMSD_LERROR, "%s_%s %s: general schema create failed\n", SAMP, SUB_SAMP, __func__);
-      err_code = ENOMEM;
-      goto out1;
-    }
-  }
-  if (source->metric_set == NULL) {
-    log_fn(LDMSD_LDEBUG, "%s %s: calling %s set create\n", SAMP, __func__, SCHEMA_NAME);
-    source->metric_set = xxc_general_set_create(self, source);
-    if (source->metric_set == NULL) {
-      log_fn(LDMSD_LERROR, "%s %s: set create failed (schema: %s, source: %s) \n",
-             SAMP, __func__, SCHEMA_NAME, source->name);
-      err_code = ENOMEM;
-      goto out1;
-    }
-  }
-  ldms_set_t metric_set = source->metric_set;
-  ldms_transaction_begin(metric_set);
-  jobid_helper_metric_update(metric_set);
-  ldms_metric_set_u64(metric_set, schema_ids[SNAPSHOT_SEC_ID], val1);
-  ldms_metric_set_u64(metric_set, schema_ids[SNAPSHOT_NS_ID], val2);
-  handle = ldms_metric_get(metric_set, schema_ids[METRIC_LIST_ID]);
-  ldms_list_purge(metric_set, handle);
+  // // else, make sure we instantiate the schema and the set and parse the rest of the file
+  // if (self->schema == NULL) {
+  //   log_fn(LDMSD_LDEBUG, "%s %s: calling %s schema init\n", SAMP, __func__, SCHEMA_NAME);
+  //   if (_schema_init(self) < 0) {
+  //     log_fn(LDMSD_LERROR, "%s_%s %s: general schema create failed\n", SAMP, SUB_SAMP, __func__);
+  //     err_code = ENOMEM;
+  //     goto out1;
+  //   }
+  // }
+  // if (source->metric_set == NULL) {
+  //   log_fn(LDMSD_LDEBUG, "%s %s: calling %s set create\n", SAMP, __func__, SCHEMA_NAME);
+  //   source->metric_set = xxc_general_set_create(self, source);
+  //   if (source->metric_set == NULL) {
+  //     log_fn(LDMSD_LERROR, "%s %s: set create failed (schema: %s, source: %s) \n",
+  //            SAMP, __func__, SCHEMA_NAME, source->name);
+  //     err_code = ENOMEM;
+  //     goto out1;
+  //   }
+  // }
+  // ldms_set_t metric_set = source->metric_set;
+  // ldms_transaction_begin(metric_set);
+  // jobid_helper_metric_update(metric_set);
+  // ldms_metric_set_u64(metric_set, schema_ids[SNAPSHOT_SEC_ID], val1);
+  // ldms_metric_set_u64(metric_set, schema_ids[SNAPSHOT_NS_ID], val2);
+  // handle = ldms_metric_get(metric_set, schema_ids[METRIC_LIST_ID]);
+  // ldms_list_purge(metric_set, handle);
   do {
-    rc = _parse_histogram(buf, sizeof(buf), sf, metric_set, handle, stats_path);
+    rc = _parse_histogram(buf, sizeof(buf), sf, self, source, sec, nsec, &handle, stats_path);
   } while (0 == rc);
 
 out2:
-  ldms_transaction_end(metric_set);
+  if (handle) ldms_transaction_end(source->metric_set);
 out1:
   fclose(sf);
   return err_code;

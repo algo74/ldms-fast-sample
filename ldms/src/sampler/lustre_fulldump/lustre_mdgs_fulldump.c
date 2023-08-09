@@ -21,13 +21,12 @@
 
 #include "lustre_fulldump_xxc_general.h"
 #include "lustre_fd-general_stats.h"
-#include "lustre_oss_fd-osd_ldiskfs_brw_stats.h"
 #include "lustre_fulldump_lnet_peers.h"
 
 
 #define _GNU_SOURCE
 
-#define SAMPLER_NAME "lustre_oss_fulldump"
+#define SAMPLER_NAME "lustre_mdgs_fulldump"
 
 struct fulldump_ctxt samp_ctxt = {0};
 LIST_HEAD(fulldump_sub_ctxt_list, fulldump_sub_ctxt);
@@ -69,46 +68,23 @@ static int add_sub_ctxt(int (*sub_ctxt_config)(struct fulldump_sub_ctxt *))
 }
 
 
-static int ost_oss_ost_config(fulldump_sub_ctxt_p self)
+static int _mdgs_fuldump_mds_mdt_stats(fulldump_sub_ctxt_p self)
 {
-  fd_general_stats_config(self, "/sys/kernel/debug/lustre/ost/OSS/ost", NODE_TYPE_SINGLE_SOURCE, "lustre_oss_fuldump_ost_oss_ost_stats");
+  fd_general_stats_config(self, "/sys/kernel/debug/lustre/mds/MDS/mdt", NODE_TYPE_SINGLE_SOURCE, "lustre_mdgs_fuldump_msd_mdt_stats");
 }
 
 
-static int ost_oss_ost_create_config(fulldump_sub_ctxt_p self)
+static int _mdgs_fuldump_mds_mdt_readpage_stats(fulldump_sub_ctxt_p self)
 {
-  fd_general_stats_config(self, "/sys/kernel/debug/lustre/ost/OSS/ost_create", NODE_TYPE_SINGLE_SOURCE, "lustre_oss_fuldump_ost_oss_ost_create_stats");
+  fd_general_stats_config(self, "/sys/kernel/debug/lustre/mds/MDS/mdt_readpage", NODE_TYPE_SINGLE_SOURCE, "lustre_mdgs_fuldump_mds_mdt_readpage_stats");
 }
 
 
-static int ost_oss_ost_io_config(fulldump_sub_ctxt_p self)
+static int _mdgs_fuldump_mds_mdt_md_stats(fulldump_sub_ctxt_p self)
 {
-  fd_general_stats_config(self, "/sys/kernel/debug/lustre/ost/OSS/ost_io", NODE_TYPE_SINGLE_SOURCE, "lustre_oss_fuldump_ost_oss_ost_io_stats");
+  fd_general_stats_config_flex(self, "/proc/fs/lustre/mdt", NODE_TYPE_SERVER, "lustre_mdgs_fuldump_mds_mdt_md_stats", "md_stats");
 }
 
-
-static int ost_oss_ost_out_config(fulldump_sub_ctxt_p self)
-{
-  fd_general_stats_config(self, "/sys/kernel/debug/lustre/ost/OSS/ost_out", NODE_TYPE_SINGLE_SOURCE, "lustre_oss_fuldump_ost_oss_ost_out_stats");
-}
-
-
-static int ost_oss_ost_seq_config(fulldump_sub_ctxt_p self)
-{
-  fd_general_stats_config(self, "/sys/kernel/debug/lustre/ost/OSS/ost_seq", NODE_TYPE_SINGLE_SOURCE, "lustre_oss_fuldump_ost_oss_ost_seq_stats");
-}
-
-
-static int obdfilter_config(fulldump_sub_ctxt_p self)
-{
-  fd_general_stats_config(self, "/proc/fs/lustre/obdfilter", NODE_TYPE_SERVER, "lustre_oss_fuldump_obdfilter_stats");
-}
-
-
-static int osd_ldiskfs_stats_config(fulldump_sub_ctxt_p self)
-{
-  fd_general_stats_config(self, "/proc/fs/lustre/osd-ldiskfs", NODE_TYPE_SERVER, "lustre_oss_fuldump_osd_ldiskfs_stats");
-}
 
 static int config(struct ldmsd_plugin *self,
                   struct attr_value_list *kwl, struct attr_value_list *avl)
@@ -145,23 +121,15 @@ static int config(struct ldmsd_plugin *self,
 	  }
 
   //TODO: configure sub-contexts
-  int err = add_sub_ctxt(ost_oss_ost_config);
+  int err = add_sub_ctxt(_mdgs_fuldump_mds_mdt_stats);
   if (err) return err;
-  err = add_sub_ctxt(ost_oss_ost_create_config);
+  err = add_sub_ctxt(_mdgs_fuldump_mds_mdt_readpage_stats);
   if (err) return err;
-  err = add_sub_ctxt(ost_oss_ost_io_config);
-  if (err) return err;
-  err = add_sub_ctxt(ost_oss_ost_out_config);
-  if (err) return err;
-  err = add_sub_ctxt(ost_oss_ost_seq_config);
-  if (err) return err;
-  err = add_sub_ctxt(obdfilter_config);
-  if (err) return err;
-  err = add_sub_ctxt(osd_ldiskfs_stats_config);
+  err = add_sub_ctxt(_mdgs_fuldump_mds_mdt_md_stats);
   if (err) return err;
 
-  err = add_sub_ctxt(lustre_oss_fd_ldiskfs_brw_stats_config);
-  if (err) return err;
+  // err = add_sub_ctxt(lustre_oss_fd_ldiskfs_brw_stats_config);
+  // if (err) return err;
 
   err = add_sub_ctxt(lustre_fulldump_lnet_peers_config);
   if (err) return err;
