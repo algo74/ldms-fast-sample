@@ -22,6 +22,8 @@ liblustre_fulldump_general_la_SOURCES = \
 				lustre_fulldump_general.c \
 				lustre_fulldump_general.h \
 				lustre_fulldump_globals.c \
+        lustre_fulldump_lnet_peers.c \
+        lustre_fulldump_lnet_peers.h \
 				lustre_fulldump_xxc_general.c \
 				lustre_fulldump_xxc_general.h \
 				lustre_fulldump_xxc_hf_hist.c \
@@ -40,7 +42,6 @@ liblustre_fulldump_la_SOURCES = \
 				lustre_fulldump_general.h \
         lustre_fulldump_llite.c \
         lustre_fulldump_llite.h \
-        lustre_fulldump_lnet_peers.c \
         lustre_fulldump_lnet_peers.h \
 				lustre_fulldump_mdc_md_stats.c \
 				lustre_fulldump_mdc_md_stats.h \
