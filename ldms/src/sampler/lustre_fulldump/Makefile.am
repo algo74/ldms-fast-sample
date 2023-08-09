@@ -100,25 +100,25 @@ liblustre_oss_fulldump_la_LDFLAGS = \
 pkglib_LTLIBRARIES += liblustre_oss_fulldump.la
 
 # MG/DS sampler plugin
-liblustre_mgds_fulldump_la_SOURCES = \
+liblustre_mdgs_fulldump_la_SOURCES = \
 				consts.h \
 				lustre_fd-general_stats.h \
 				lustre_fulldump_context.h \
 				lustre_fulldump_general.h \
         lustre_fulldump.h\
-				lustre_mgds_fulldump.c
+				lustre_mdgs_fulldump.c
 
-liblustre_mgds_fulldump_la_LIBADD = \
+liblustre_mdgs_fulldump_la_LIBADD = \
 	$(CORE_LIBADD) \
 	liblustre_fulldump_general.la
 
-liblustre_mgds_fulldump_la_LDFLAGS = \
+liblustre_mdgs_fulldump_la_LDFLAGS = \
 	-no-undefined \
         -export-symbols-regex 'get_plugin' \
         -version-info 1:0:0
-# liblustre_mgds_fulldump_la_CPPFLAGS = \
+# liblustre_mdgs_fulldump_la_CPPFLAGS = \
 # 	@OVIS_INCLUDE_ABS@
 
-pkglib_LTLIBRARIES += liblustre_mgds_fulldump.la
+pkglib_LTLIBRARIES += liblustre_mdgs_fulldump.la
 
 dist_man7_MANS = Plugin_lustre_fulldump.man
