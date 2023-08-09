@@ -81,6 +81,7 @@ liblustre_oss_fulldump_la_SOURCES = \
 				lustre_fd-general_stats.h \
 				lustre_fulldump_context.h \
 				lustre_fulldump_general.h \
+        lustre_fulldump_lnet_peers.h \
         lustre_fulldump.h\
 				lustre_oss_fd-osd_ldiskfs_brw_stats.c \
 				lustre_oss_fd-osd_ldiskfs_brw_stats.h \
@@ -105,6 +106,7 @@ liblustre_mdgs_fulldump_la_SOURCES = \
 				lustre_fd-general_stats.h \
 				lustre_fulldump_context.h \
 				lustre_fulldump_general.h \
+        lustre_fulldump_lnet_peers.h \
         lustre_fulldump.h\
 				lustre_mdgs_fulldump.c
 
