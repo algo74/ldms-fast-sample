@@ -34,46 +34,9 @@
 #define SAMPLER_NAME "lustre_fulldump"
 
 struct fulldump_ctxt samp_ctxt = {0};
-LIST_HEAD(fulldump_sub_ctxt_list, fulldump_sub_ctxt);
-struct fulldump_sub_ctxt_list sub_ctxt_list = {NULL};
-
-// extern ldmsd_msg_log_f log_fn;
-
-struct fulldump_sub_ctxt *create_sub_ctxt(struct fulldump_ctxt *samp_ctxt)
-{
-  struct fulldump_sub_ctxt *sub_ctxt_p = calloc(1, sizeof(struct fulldump_sub_ctxt));
-  if (!sub_ctxt_p) {
-    log_fn(LDMSD_LERROR, "%s: create_sub_ctxt: calloc failed.\n", SAMP);
-    return NULL;
-  }
-  sub_ctxt_p->sampl_ctxt_p = samp_ctxt;
-  sub_ctxt_p->cid = samp_ctxt->cid;
-  // sub_ctxt_p->extra = NULL;
-  // sub_ctxt_p->sample = NULL;
-  // sub_ctxt_p->term = NULL;
-  // sub_ctxt_p->schema = NULL;
-  return sub_ctxt_p;
-}
 
 
-static int add_sub_ctxt(int (*sub_ctxt_config)(struct fulldump_sub_ctxt *))
-{
-  struct fulldump_sub_ctxt *sub_ctxt_p = create_sub_ctxt(&samp_ctxt);
-  if (!sub_ctxt_p) {
-    log_fn(LDMSD_LERROR, "%s: config: create_sub_ctxt failed.\n", SAMP);
-    return EINVAL;
-  }
-  int err = sub_ctxt_config(sub_ctxt_p);
-  if (err) {
-    log_fn(LDMSD_LERROR, "%s: config: lustre_fulldump_llite_config failed.\n", SAMP);
-    return err;
-  }
-  LIST_INSERT_HEAD(&sub_ctxt_list, sub_ctxt_p, link);
-  return 0;
-}
-
-
-static int config(struct ldmsd_plugin *self,
+static int _config(struct ldmsd_plugin *self,
                   struct attr_value_list *kwl, struct attr_value_list *avl)
 {
   log_fn(LDMSD_LDEBUG, "%s config() called\n", SAMP);
@@ -108,66 +71,49 @@ static int config(struct ldmsd_plugin *self,
 	  }
 
   //TODO: configure sub-contexts
-  int err = add_sub_ctxt(lustre_fulldump_llite_config);
-  if (err) return err;
-  err = add_sub_ctxt(lustre_fulldump_lnet_peers_config);
-  if (err) return err;
-  err = add_sub_ctxt(lustre_fulldump_mdc_md_stats_config);
-  if (err) return err;
-  err = add_sub_ctxt(lustre_fulldump_mdc_rpc_stats_config);
-  if (err) return err;
-  err = add_sub_ctxt(lustre_fulldump_mdc_stats_config);
-  if (err) return err;
-  err = add_sub_ctxt(lustre_fulldump_mdc_timeouts_config);
-  if (err) return err;
-  err = add_sub_ctxt(lustre_fulldump_osc_rpc_stats_config);
-  if (err) return err;
-  err = add_sub_ctxt(lustre_fulldump_osc_stats_config);
-  if (err) return err;
-  err = add_sub_ctxt(lustre_fulldump_osc_timeouts_config);
-  if (err) return err;
+          int err = add_sub_ctxt(&samp_ctxt, lustre_fulldump_llite_config);
+          if (err) return err;
+          err = add_sub_ctxt(&samp_ctxt, lustre_fulldump_lnet_peers_config);
+          if (err) return err;
+          err = add_sub_ctxt(&samp_ctxt, lustre_fulldump_mdc_md_stats_config);
+          if (err) return err;
+          err = add_sub_ctxt(&samp_ctxt, lustre_fulldump_mdc_rpc_stats_config);
+          if (err) return err;
+          err = add_sub_ctxt(&samp_ctxt, lustre_fulldump_mdc_stats_config);
+          if (err) return err;
+          err = add_sub_ctxt(&samp_ctxt, lustre_fulldump_mdc_timeouts_config);
+          if (err) return err;
+          err = add_sub_ctxt(&samp_ctxt, lustre_fulldump_osc_rpc_stats_config);
+          if (err) return err;
+          err = add_sub_ctxt(&samp_ctxt, lustre_fulldump_osc_stats_config);
+          if (err) return err;
+          err = add_sub_ctxt(&samp_ctxt, lustre_fulldump_osc_timeouts_config);
+          if (err) return err;
 
 
-  log_fn(LDMSD_LDEBUG, "%s config() all done\n", SAMP);
-  samp_ctxt.configured = true;
-  return 0;
+          log_fn(LDMSD_LDEBUG, "%s config() all done\n", SAMP);
+          samp_ctxt.configured = true;
+          return 0;
 }
 
 
-static int sample(struct ldmsd_sampler *self)
+static int _sample(struct ldmsd_sampler *self)
 {
-  log_fn(LDMSD_LDEBUG, "%s sample() called\n", SAMP);
-  int err = 0;
-  struct fulldump_sub_ctxt *sub_ctxt_p;
-  LIST_FOREACH(sub_ctxt_p, &sub_ctxt_list, link) {
-    log_fn(LDMSD_LDEBUG, "%s calling sub_ctxt sample()\n", SAMP);
-    err = sub_ctxt_p->sample(sub_ctxt_p);
-    if (err)
-      log_fn(LDMSD_LERROR, "%s: sample: sub_ctxt sample failed; err code %d.\n", SAMP, err);
-  }
-  return 0;
+  return sample_contexts(self, &samp_ctxt);
 }
 
 
-static void term(struct ldmsd_plugin *self)
+static void _term(struct ldmsd_plugin *self)
 {
-  log_fn(LDMSD_LDEBUG, "%s term() called\n", SAMP);
-  struct fulldump_sub_ctxt *sub_ctxt_p = LIST_FIRST(&sub_ctxt_list);
-  while (sub_ctxt_p) {
-    sub_ctxt_p->term(sub_ctxt_p);
-    struct fulldump_sub_ctxt *next_sub_ctxt_p = LIST_NEXT(sub_ctxt_p, link);
-    free(sub_ctxt_p);
-    sub_ctxt_p = next_sub_ctxt_p;
-  }
-  LIST_INIT(&sub_ctxt_list);
+  return term_contexts(self, &samp_ctxt);
 }
 
-static ldms_set_t get_set(struct ldmsd_sampler *self)
+static ldms_set_t _get_set(struct ldmsd_sampler *self)
 {
 	return NULL;
 }
 
-static const char *usage(struct ldmsd_plugin *self)
+static const char *_usage(struct ldmsd_plugin *self)
 {
         log_fn(LDMSD_LDEBUG, "%s usage() called\n", SAMP);
 	return  "TODO: ";
@@ -177,12 +123,12 @@ static struct ldmsd_sampler llite_plugin = {
 	.base = {
 		.name = SAMPLER_NAME,
 		.type = LDMSD_PLUGIN_SAMPLER,
-		.term = term,
-		.config = config,
-		.usage = usage,
+		.term = _term,
+		.config = _config,
+		.usage = _usage,
 	},
-	.get_set = get_set,
-	.sample = sample,
+	.get_set = _get_set,
+	.sample = _sample,
 };
 
 struct ldmsd_plugin *get_plugin(ldmsd_msg_log_f pf)

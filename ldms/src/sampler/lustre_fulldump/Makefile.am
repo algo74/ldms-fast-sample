@@ -18,6 +18,7 @@ liblustre_fulldump_general_la_SOURCES = \
 				ldms_missing.c \
 				lustre_fd-general_stats.c \
 				lustre_fd-general_stats.h \
+				lustre_fulldump_context.c \
 				lustre_fulldump_context.h \
 				lustre_fulldump_general.c \
 				lustre_fulldump_general.h \
