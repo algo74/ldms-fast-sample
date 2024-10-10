@@ -8,6 +8,8 @@
 #include "ldmsd.h"
 #include "sampler_base.h"
 
+LIST_HEAD(fulldump_sub_ctxt_list, fulldump_sub_ctxt);
+
 typedef struct fulldump_ctxt {
   char producer_name[LDMS_PRODUCER_NAME_MAX];
   struct comp_id_data cid;
@@ -26,8 +28,6 @@ typedef struct fulldump_sub_ctxt {
   int (*sample)(void *self);
   int (*term)(void *self);
 } *fulldump_sub_ctxt_p;
-
-LIST_HEAD(fulldump_sub_ctxt_list, fulldump_sub_ctxt);
 
 int add_sub_ctxt(fulldump_ctxt_p samp_ctxt, int (*sub_ctxt_config)(struct fulldump_sub_ctxt *));
 int sample_contexts(struct ldmsd_sampler *self, fulldump_ctxt_p sampl_ctxt);
