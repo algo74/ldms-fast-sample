@@ -49,7 +49,10 @@
  */
 
 /**
- * \file tsampler.h
+ * \file high_freq_sampler.h
+ * 
+ * 
+ * Adapted from tsampler.h
  */
 
 /**

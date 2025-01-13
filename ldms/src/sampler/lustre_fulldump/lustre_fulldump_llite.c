@@ -59,6 +59,7 @@ struct llite_data {
   struct rbn llite_tree_node;
 };
 
+// NOTE: 
 static struct ldms_metric_template_s llite_schema_metric_record_templlate[] = {
     {"metric_name", 0, LDMS_V_CHAR_ARRAY, "", MAXMETRICNAMESIZE},
     {"count", 0, LDMS_V_U64, "", 1},
@@ -68,12 +69,14 @@ static struct ldms_metric_template_s llite_schema_metric_record_templlate[] = {
     // {"sum2", 0, LDMS_V_U64, "", 1},
     {0},
 };
-static int llite_schema_metric_record_ids[ARRAY_LEN(llite_schema_metric_record_templlate)];
+// NOTE: this enum must match the metric record template structure
 enum {
   METRIC_NAME_ID,
   METRIC_COUNT_ID,
   METRIC_SUM_ID,
 };
+/// @brief array to store ids of the record fields in the metric
+static int llite_schema_metric_record_ids[ARRAY_LEN(llite_schema_metric_record_templlate)];
 
 /* metric templates for the set schema */
 static struct ldms_metric_template_s llite_schema_templlate[] = {
@@ -84,7 +87,9 @@ static struct ldms_metric_template_s llite_schema_templlate[] = {
     {"metric_list", 0, LDMS_V_LIST, "", /* set heap_sz later */},
     {0},
 };
+/// @brief array to store ids of the fields in the schema
 static int llite_schema_ids[ARRAY_LEN(llite_schema_templlate)];
+// NOTE: this enum must match the schema template structure
 enum {
   METRIC_RECORD_ID,
   FS_NAME_ID,
@@ -93,12 +98,13 @@ enum {
   METRIC_LIST_ID
 };
 
+// needed by rbtree
 static int string_comparator(void *a, const void *b)
 {
   return strcmp((char *)a, (char *)b);
 }
 
-
+// NOTE: this is more or less a standard way a schema is initialized in the sub-samplers
 int llite_stats_schema_init(fulldump_sub_ctxt_p self)
 {
   return fulldump_general_schema_init(self, "lustre_fulldump_llite_stats", llite_schema_templlate, llite_schema_ids,
@@ -459,7 +465,14 @@ static void term(fulldump_sub_ctxt_p self)
   fulldump_general_schema_fini(self);
 }
 
-
+/**
+ * basic logic for the llite sampler (most of it resides in the sample function):
+ * - initialize the schema if it does not exist
+ * - refresh the list of llites (the list of Lustre file systems)
+ * - sample the stats for each llite
+ * 
+ * NOTE: llites are stored in a red-black tree (because we reuse the code from another llite sampler). It could be and overkill.
+*/
 int lustre_fulldump_llite_config(fulldump_sub_ctxt_p self)
 {
   self->sample = (int (*)(void *self)) sample;

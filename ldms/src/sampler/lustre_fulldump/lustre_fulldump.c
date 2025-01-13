@@ -31,12 +31,27 @@
 
 #define _GNU_SOURCE
 
+/**
+ * samp_ctxt is the global context for the fulldump sampler
+*/
 struct fulldump_ctxt samp_ctxt = {0};
+/**
+ * sub_ctxt_list is the global linked list of sub-contexts for the fulldump sampler
+ */
 LIST_HEAD(fulldump_sub_ctxt_list, fulldump_sub_ctxt);
 struct fulldump_sub_ctxt_list sub_ctxt_list = {NULL};
 
 // extern ldmsd_msg_log_f log_fn;
 
+/**
+ * @brief create_sub_ctxt creates a sub-context structure and initializes it with the given fulldump_ctxt
+ * @param samp_ctxt The pointer to the fulldump_ctxt
+ * @return The pointer to the created sub-context structure
+ *         NULL if the memory allocation fails
+ * The sub-context structure is allocated using calloc, so all the fields are initialized to 0
+ * The sampl_ctxt_p field is set to the given fulldump_ctxt
+ * The cid field gets a copy of the cid field of the given fulldump_ctxt
+*/
 struct fulldump_sub_ctxt *create_sub_ctxt(struct fulldump_ctxt *samp_ctxt)
 {
   struct fulldump_sub_ctxt *sub_ctxt_p = calloc(1, sizeof(struct fulldump_sub_ctxt));
@@ -53,7 +68,12 @@ struct fulldump_sub_ctxt *create_sub_ctxt(struct fulldump_ctxt *samp_ctxt)
   return sub_ctxt_p;
 }
 
-
+/**
+ * @brief add_sub_ctxt creates (using create_sub_ctxt) and adds a sub-context to the sub_ctxt_list
+ * @param sub_ctxt_config The configuration function for the sub-context
+ * @return 0 if the sub-context is successfully added
+ *         error code otherwise
+ */
 static int add_sub_ctxt(int (*sub_ctxt_config)(struct fulldump_sub_ctxt *))
 {
   struct fulldump_sub_ctxt *sub_ctxt_p = create_sub_ctxt(&samp_ctxt);
@@ -70,7 +90,9 @@ static int add_sub_ctxt(int (*sub_ctxt_config)(struct fulldump_sub_ctxt *))
   return 0;
 }
 
-
+/**
+ * @brief config is a part of the plugin interface; it is called when the sampler is being configured
+*/
 static int config(struct ldmsd_plugin *self,
                   struct attr_value_list *kwl, struct attr_value_list *avl)
 {
@@ -80,6 +102,8 @@ static int config(struct ldmsd_plugin *self,
     return EINVAL;
 
   }
+  // get the producer name and check if it is not too long
+  // store the producer name in the samp_ctxt
 	char *ival = av_value(avl, "producer");
 	if (ival) {
     if (strlen(ival) < sizeof(samp_ctxt.producer_name)) {
@@ -89,7 +113,13 @@ static int config(struct ldmsd_plugin *self,
       return EINVAL;
 
     }
+  // NOTE: if the producer name is not provided, the hostname is used as the producer name (see get_plugin() function). So, this else block is not needed.
+  // } else {
+  //   log_fn(LDMSD_LERROR, SAMP ": config: could not get producer name.\n");
+  //   return EINVAL;
+  //
   }
+  // parse the authorization information using base_auth_parse from sampler_base.h
 	(void)base_auth_parse(avl, &samp_ctxt.auth, log_fn);
 	int jc = jobid_helper_config(avl);
     if (jc) {
@@ -98,6 +128,7 @@ static int config(struct ldmsd_plugin *self,
 		return jc;
 
 	}
+  // parse the component ID using comp_id_helper_config from comp_id_helper.h
 	int cc = comp_id_helper_config(avl, &samp_ctxt.cid);
     if (cc) {
 		  log_fn(LDMSD_LERROR, SAMP": value of component_id"
@@ -106,7 +137,7 @@ static int config(struct ldmsd_plugin *self,
 
 	}
 
-  //TODO: configure sub-contexts
+  //TODO: configure other sub-contexts
   int err = add_sub_ctxt(lustre_fulldump_llite_config);
   if (err) return err;
   err = add_sub_ctxt(lustre_fulldump_lnet_peers_config);
@@ -134,6 +165,9 @@ static int config(struct ldmsd_plugin *self,
 
 
 static int sample(struct ldmsd_sampler *self)
+/*
+  The logic of the sample() function is simple: it calls the sample() function of each sub-context in the sub_ctxt_list untill the end of the list is reached or an error occurs. If an error occurs, the function returns the error code. If no error occurs, the function returns 0.
+*/
 {
   log_fn(LDMSD_LDEBUG, SAMP " sample() called\n");
   int err = 0;
@@ -149,6 +183,9 @@ static int sample(struct ldmsd_sampler *self)
 
 
 static void term(struct ldmsd_plugin *self)
+/*
+  The term() function is called when the sampler is being terminated. It calls the term() function of each sub-context in the sub_ctxt_list and frees the memory allocated for the sub-context structure. Then it resets the sub_ctxt_list, which should free the list memory.
+*/
 {
   log_fn(LDMSD_LDEBUG, SAMP" term() called\n");
   struct fulldump_sub_ctxt *sub_ctxt_p = LIST_FIRST(&sub_ctxt_list);
@@ -167,11 +204,13 @@ static ldms_set_t get_set(struct ldmsd_sampler *self)
 }
 
 static const char *usage(struct ldmsd_plugin *self)
+// TODO: implement
 {
         log_fn(LDMSD_LDEBUG, SAMP" usage() called\n");
 	return  "TODO: config name=" SAMP;
 }
 
+// TODO: change the name of the struct to be consistent
 static struct ldmsd_sampler llite_plugin = {
 	.base = {
 		.name = SAMP,

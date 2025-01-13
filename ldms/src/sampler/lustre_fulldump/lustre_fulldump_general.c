@@ -186,9 +186,7 @@ int fulldump_split_server_name(char *server_name, char **fs_name, int *server_in
 }
 
 
-/* Different versions of Lustre put files in different place.
-   Returns a pointer to a path, or NULL if no directory found anywhere.
-   FIXME: we need to make sure that not only the directory exists,
+/* FIXME: we need to make sure that not only the directory exists,
    but that it contains the file we need.
  */
 int update_existing_path(const char **current_path, const char *const *path_options, size_t paths_len)

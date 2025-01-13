@@ -172,11 +172,7 @@ void servers_destroy(struct rbt *source_tree)
 }
 
 
-/** List subdirectories to get all metric files.
- * Create data structures for any file that we
- * have not seen, and delete any that we no longer see.
- */
-int servers_refresh(struct rbt *source_tree, fulldump_sub_ctxt_p self, const char *path)
+int  servers_refresh(struct rbt *source_tree, fulldump_sub_ctxt_p self, const char *path)
 // FIXME: Make sure the error handling is correct
 {
   static int dir_once_log = 0;

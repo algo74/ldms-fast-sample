@@ -47,7 +47,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /**
- * \file tsampler.c
+ * \file high_freq_sampler.c
+ * 
+ * Adapted from tsampler.c
+ * TODO: May need refactoring / renaming fro consistency
  */
 
 #include <pthread.h>

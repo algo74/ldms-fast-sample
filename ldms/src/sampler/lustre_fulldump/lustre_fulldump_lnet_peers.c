@@ -125,6 +125,9 @@ static ldms_set_t local_set_create(const char *producer_name,
 
 static int local_sample(fulldump_sub_ctxt_p self)
 // FIXME: Make sure the error handling is correct
+/*
+  This sub-sampler has one set. The set has a list with separate row for each nid. 
+**/
 {
   // static int dir_once_log = 0;
   char source_path[PATH_MAX];
@@ -229,6 +232,9 @@ static int config(fulldump_sub_ctxt_p self)
 
 static int sample(fulldump_sub_ctxt_p self)
 {
+  /*
+    The logic of the sample() function is simple: it makes sure that the schema exists and calls the local sampler. This pattern is common to other sub-samplers.
+  **/
   log_fn(LDMSD_LDEBUG, SAMP " " SUB_SAMP ":%s() called\n", __func__);
   struct lnet_extra *extra = self->extra;
   if (self->schema == NULL) {

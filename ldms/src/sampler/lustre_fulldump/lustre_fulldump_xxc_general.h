@@ -61,12 +61,29 @@ void server_general_term(fulldump_sub_ctxt_p self);
 
 void servers_destroy(struct rbt *source_tree);
 
-/** List subdirectories to get all metric files.
+/** 
+ * @brief Refresh the servers "list".
+ * 
+ * List subdirectories to get all metric files.
  * Create data structures for any file that we
  * have not seen, and delete any that we no longer see.
+ * 
+ * NOTE: we use the red-black tree to store the servers. It may be an overkill.
+ * 
+ * @param[in,out] source_tree The red-black tree that contains the servers
+ * @param[in] self The pointer to the sub-context structure
+ * @param[in] path The path to the directory that contains the servers
  */
 int servers_refresh(struct rbt *source_tree, fulldump_sub_ctxt_p self, const char *path);
 
+/** 
+ * @brief Sample the servers
+ * 
+ * Sample all the servers in the source tree.
+ * 
+ * @param[in] xxc_extra The extra data of the sub-sampler
+ * @param[in] single_sample The function pointer to the "local" sample function that will be called for each server with the file path and the metric set to use
+ */
 void servers_sample(struct xxc_extra *xxc_extra, int (*single_sample)(const char *, ldms_set_t));
 
 #endif /* __LUSTRE_FULLDUMP_OSC_GENERAL_H */
