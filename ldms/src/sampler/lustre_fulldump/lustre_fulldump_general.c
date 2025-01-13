@@ -36,7 +36,7 @@
 // ldmsd_msg_log_f log_fn;
 
 
-int fulldump_general_schema_init(fulldump_sub_ctxt_p self, char *schema_name,
+int fulldump_general_schema_init(fulldump_sub_ctxt_p self, const char *schema_name,
       struct ldms_metric_template_s *schema_template, int *schema_ids,
       struct ldms_metric_template_s *metric_record_template, int *metric_record_ids,
       int record_idx, int list_idx, size_t maxlistsize)
@@ -45,14 +45,14 @@ int fulldump_general_schema_init(fulldump_sub_ctxt_p self, char *schema_name,
 
   ldms_schema_t sch;
   int rc;
-  log_fn(LDMSD_LDEBUG, SAMP ": %s()\n", __func__);
+  log_fn(LDMSD_LDEBUG, "%s: %s()\n", SAMP, __func__);
 
   // Finish defining the schema template
   struct ldms_metric_template_s *rec_entry = &schema_template[record_idx];
   struct ldms_metric_template_s *list_entry = &schema_template[list_idx];
   ldms_record_t rec_def = ldms_record_from_template(rec_entry->name, metric_record_template, metric_record_ids);
   if (!rec_def) {
-    log_fn(LDMSD_LERROR, SAMP ": fulldump_general_schema_init() failed to create record template\n");
+    log_fn(LDMSD_LERROR, "%s: fulldump_general_schema_init() failed to create record template\n", SAMP);
     goto err1;
 
   }
@@ -63,9 +63,8 @@ int fulldump_general_schema_init(fulldump_sub_ctxt_p self, char *schema_name,
   // Create the schema
   sch = ldms_schema_new(schema_name);
   if (sch == NULL) {
-    log_fn(LDMSD_LERROR, SAMP
-           ": fulldump_general_schema_init schema new failed"
-           " (out of memory)\n");
+    log_fn(LDMSD_LERROR, "%s: fulldump_general_schema_init schema new failed"
+           " (out of memory)\n", SAMP);
     goto err2;
 
   }
@@ -93,7 +92,7 @@ int fulldump_general_schema_init(fulldump_sub_ctxt_p self, char *schema_name,
   return 0;
 
 err3:
-  log_fn(LDMSD_LERROR, SAMP ": lustre_llite_general schema creation failed to add %s. (%s)\n",
+  log_fn(LDMSD_LERROR, "%s: lustre_llite_general schema creation failed to add %s. (%s)\n", SAMP,
          field, STRERROR(-rc));
   ldms_schema_delete(sch);
 err2:
@@ -139,7 +138,7 @@ void fulldump_general_destroy_set(ldms_set_t set)
 
 void fulldump_general_schema_fini(fulldump_sub_ctxt_p self)
 {
-  log_fn(LDMSD_LDEBUG, SAMP ": fulldump_general_schema_fini()\n");
+  log_fn(LDMSD_LDEBUG, "%s: fulldump_general_schema_fini()\n", SAMP);
   if (self->schema != NULL) {
     ldms_schema_delete(self->schema);
     self->schema = NULL;
@@ -158,12 +157,12 @@ int fulldump_split_server_name(char *server_name, char **fs_name, int *server_in
   }
   char *second = strchr(first + 1, '-');
   if (second == NULL) {
-    return 1;
+    second = server_name + strlen(server_name);
   }
-  char *third = strchr(second + 1, '-');
-  if (third == NULL) {
-    return 2;
-  }
+  // char *third = strchr(second + 1, '-');
+  // if (third == NULL) {
+  //   return 2;
+  // }
   // parse the fields
   int rc = sscanf(first + 1, "%*3s%d-", &idx_);
   if (rc != 1) {
@@ -215,4 +214,46 @@ int empty_line(char *line)
     p++;
   }
   return 1;
+}
+
+
+int equal_strings_ignoring_spaces(const char *s1, const char *s2)
+{
+  // skip spaces at the beginning
+  while (isspace(*s1)) {
+    s1++;
+  }
+  while (isspace(*s2)) {
+    s2++;
+  }
+  while (*s1 != '\0' && *s2 != '\0') {
+    if (isspace(*s1) || isspace(*s2)) {
+      if (!(isspace(*s2) && isspace(*s1))) {
+        return 0;
+      }
+      while (isspace(*s1)) {
+        s1++;
+      }
+      while (isspace(*s2)) {
+        s2++;
+      }
+    } else if (*s1 != *s2) {
+      return 0;
+    } else {
+      s1++;
+      s2++;
+    }
+  }
+  // at least one string is finished
+  // but another may have only spaces left
+  while (isspace(*s1)) {
+    s1++;
+  }
+  while (isspace(*s2)) {
+    s2++;
+  }
+  if (*s1 == '\0' && *s2 == '\0') {
+    return 1;
+  }
+  return 0;
 }

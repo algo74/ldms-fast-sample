@@ -34,7 +34,7 @@
  * 
  * NOTE: the schema is usually created during sample call if it does not exist.
 */
-int fulldump_general_schema_init(fulldump_sub_ctxt_p self, char *schema_name,
+int fulldump_general_schema_init(fulldump_sub_ctxt_p self, const char *schema_name,
                                  struct ldms_metric_template_s *schema_template, int *schema_ids,
                                  struct ldms_metric_template_s *metric_record_template, int *metric_record_ids,
                                  int record_idx, int list_idx, size_t maxlistsize);
@@ -80,7 +80,8 @@ void fulldump_general_destroy_set(ldms_set_t set);
  * \param[out] fs_name The filesystem name (eg. testfs)
  * \param[out] server_idx The index of the server (eg. 0 for OST0000)
  * \param[out] server_id The id of the server (eg. OST0000)
- * \return number of dashes found in the OSC name (3 is success)
+ * \return 3 on success TODO: refactor (it used to be number of dashes in the name)
+ * \return or  0 if the name is not in the expected format
  * \return or -1 on allocation error
  * \return or -2 if the OSC name is not in the expected format
  */
@@ -103,5 +104,13 @@ int update_existing_path(const char **current_path, const char *const *path_opti
  * \return 1 if the line is empty, 0 otherwise
 */
 int empty_line(char *line);
+
+/**
+ * \brief compare two strings ignoring space areas differences
+ * \param[in] s1 The first string
+ * \param[in] s2 The second string
+ * \return 1 if the strings are equal ignoring spaces, 0 otherwise
+ */
+int equal_strings_ignoring_spaces(const char *s1, const char *s2);
 
 #endif /* __LUSTRE_FULLDUMP_GENERAL_H */

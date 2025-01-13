@@ -36,8 +36,6 @@
 #define PATH_MAX 4096
 #endif
 
-ldmsd_msg_log_f log_fn;
-
 /* locations where llite stats might be found */
 static const char *const llite_paths[] = {
     "/proc/fs/lustre/llite",         /* lustre pre-2.12 */
@@ -124,7 +122,7 @@ ldms_set_t llite_set_create(ldmsd_msg_log_f log_fn,
   int index;
   char instance_name[LDMS_PRODUCER_NAME_MAX + 64];
 
-  log_fn(LDMSD_LDEBUG, SAMP ": llite_set_create()\n");
+  log_fn(LDMSD_LDEBUG, "%s: llite_set_create()\n", SAMP);
   snprintf(instance_name, sizeof(instance_name), "%s/%s/%s/llite_stats",
            producer_name, SAMP, fs_name);
   set = fulldump_general_create_set(log_fn, producer_name, instance_name, auth, cid, schema);
@@ -143,7 +141,7 @@ static struct llite_data *llite_create(const char *llite_name, const char *based
   char path_tmp[PATH_MAX];
   char *state;
 
-  log_fn(LDMSD_LDEBUG, SAMP " llite_create() %s from %s\n",
+  log_fn(LDMSD_LDEBUG, "%s llite_create() %s from %s\n", SAMP,
          llite_name, basedir);
   llite = calloc(1, sizeof(*llite));
   if (llite == NULL)
@@ -169,14 +167,14 @@ static struct llite_data *llite_create(const char *llite_name, const char *based
 
   char *short_fs_name = strtok_r(llite->fs_name, "-", &state);
   if (short_fs_name == NULL) {
-    log_fn(LDMSD_LWARNING, SAMP "%s: unable to parse filesystem name from \"%s\"\n",
+    log_fn(LDMSD_LWARNING, "%s %s: unable to parse filesystem name from \"%s\"\n", SAMP,
            __func__, llite->fs_name);
     goto out6;
 
   }
   short_fs_name = strdup(short_fs_name);
   if (short_fs_name == NULL) {
-    log_fn(LDMSD_LWARNING, SAMP "%s: unable to allocate string for short filesystem name from \"%s\"\n",
+    log_fn(LDMSD_LWARNING, "%s %s: unable to allocate string for short filesystem name from \"%s\"\n", SAMP,
            __func__, llite->fs_name);
     goto out6;
   }
@@ -207,7 +205,7 @@ out1:
 
 static void llite_destroy(struct llite_data *llite, ldmsd_msg_log_f log_fn)
 {
-  log_fn(LDMSD_LDEBUG, SAMP " llite_destroy() %s\n", llite->name);
+  log_fn(LDMSD_LDEBUG, "%s llite_destroy() %s\n", SAMP, llite->name);
   fulldump_general_destroy_set(llite->metric_set);
   free(llite->fs_name);
   free(llite->stats_path);
@@ -246,13 +244,13 @@ static const char *const find_llite_path(ldmsd_msg_log_f log_fn)
     if (current_path != llite_paths[i]) {
       /* just for logging purposes */
       current_path = llite_paths[i];
-      log_fn(LDMSD_LDEBUG, SAMP " find_llite_path() found %s\n",
+      log_fn(LDMSD_LDEBUG, "%s find_llite_path() found %s\n", SAMP,
              llite_paths[i]);
     }
     return llite_paths[i];
   }
 
-  log_fn(LDMSD_LWARNING, SAMP " no llite directories found\n");
+  log_fn(LDMSD_LWARNING, "%s no llite directories found\n", SAMP);
   return NULL;
 }
 
@@ -287,7 +285,7 @@ static int llites_refresh(struct rbt *llite_tree_p, fulldump_sub_ctxt_p self)
   dir = opendir(llite_path);
   if (dir == NULL) {
     if (!dir_once_log) {
-      log_fn(LDMSD_LDEBUG, SAMP " unable to open llite dir %s\n",
+      log_fn(LDMSD_LDEBUG, "%s unable to open llite dir %s\n", SAMP,
              llite_path);
       dir_once_log = 1;
     }
@@ -341,11 +339,11 @@ static int llite_stats_sample(const char *stats_path, ldms_set_t metric_set)
   uint64_t val1, val2, val3, val4;
   int index;
 
-  log_fn(LDMSD_LDEBUG, SAMP ": llite_stats_sample: file %s\n", stats_path);
+  log_fn(LDMSD_LDEBUG, "%s: llite_stats_sample: file %s\n", SAMP, stats_path);
 
   sf = fopen(stats_path, "r");
   if (sf == NULL) {
-    log_fn(LDMSD_LWARNING, SAMP ": file %s not found\n",
+    log_fn(LDMSD_LWARNING, "%s: file %s not found\n", SAMP,
            stats_path);
     return ENOENT;
   }
@@ -355,15 +353,15 @@ static int llite_stats_sample(const char *stats_path, ldms_set_t metric_set)
      from the file, not any information about when the stats last
      changed */
   if (fgets(buf, sizeof(buf), sf) == NULL) {
-    log_fn(LDMSD_LWARNING, SAMP ": failed on read from %s\n",
+    log_fn(LDMSD_LWARNING, "%s: failed on read from %s\n", SAMP,
            stats_path);
     err_code = ENOMSG;
     goto out1;
   }
-  // log_fn(LDMSD_LDEBUG, SAMP ": llite_stats_sample: buf: %500s\n", buf);
+  // log_fn(LDMSD_LDEBUG, "%s: llite_stats_sample: buf: %500s\n", SAMP, buf);
   rc = sscanf(buf, "%64s %lu.%lu", str1, &val1, &val2);
   if (rc != 3 || strncmp(str1, "snapshot_time", MAXNAMESIZE) != 0) {
-    log_fn(LDMSD_LWARNING, SAMP ": first line in %s is not \"snapshot_time\": %.512s\n",
+    log_fn(LDMSD_LWARNING, "%s: first line in %s is not \"snapshot_time\": %.512s\n", SAMP,
            stats_path, buf);
     err_code = ENOMSG;
     goto out1;
@@ -381,7 +379,7 @@ static int llite_stats_sample(const char *stats_path, ldms_set_t metric_set)
     if (rc == 2) {
       val2 = 0;
     } else if (rc != 3) {
-      log_fn(LDMSD_LWARNING, SAMP ": failed to parse line in %s: %s\n",
+      log_fn(LDMSD_LWARNING, "%s: failed to parse line in %s: %s\n", SAMP,
              stats_path, buf);
       err_code = ENOMSG;
       goto out2;
@@ -427,28 +425,28 @@ static int config(fulldump_sub_ctxt_p self)
   log_fn(LDMSD_LDEBUG, " LLITE config() called\n");
   struct llite_extra *extra = malloc(sizeof(struct llite_extra));
   if (extra == NULL) {
-    log_fn(LDMSD_LERROR, SAMP " llite config: out of memory\n");
+    log_fn(LDMSD_LERROR, "%s llite config: out of memory\n", SAMP);
     return ENOMEM;
   }
   rbt_init(&extra->llite_tree, string_comparator);
   self->extra = extra;
-  log_fn(LDMSD_LDEBUG, SAMP " llite config: exiting normally\n");
+  log_fn(LDMSD_LDEBUG, "%s llite config: exiting normally\n", SAMP);
   return 0;
 }
 
 static int sample(fulldump_sub_ctxt_p self)
 {
-  log_fn(LDMSD_LDEBUG, SAMP " llite sample() called\n");
+  log_fn(LDMSD_LDEBUG, "%s llite sample() called\n", SAMP);
   struct llite_extra *extra = self->extra;
   if (self->schema == NULL) {
-    log_fn(LDMSD_LDEBUG, SAMP " llite calling schema init\n");
+    log_fn(LDMSD_LDEBUG, "%s llite calling schema init\n", SAMP);
     if (llite_stats_schema_init(self) < 0) {
-      log_fn(LDMSD_LERROR, SAMP " general schema create failed\n");
+      log_fn(LDMSD_LERROR, "%s general schema create failed\n", SAMP);
       return ENOMEM;
 
     }
   }
-  log_fn(LDMSD_LDEBUG, SAMP " llite calling refresh\n");
+  log_fn(LDMSD_LDEBUG, "%s llite calling refresh\n", SAMP);
   int err = llites_refresh(&extra->llite_tree, self);
   if (err) /* running out of set memory is an error */
     return err;
@@ -459,7 +457,7 @@ static int sample(fulldump_sub_ctxt_p self)
 
 static void term(fulldump_sub_ctxt_p self)
 {
-  log_fn(LDMSD_LDEBUG, SAMP " term() called\n");
+  log_fn(LDMSD_LDEBUG, "%s term() called\n", SAMP);
   struct llite_extra *extra = self->extra;
   llites_destroy(&extra->llite_tree);
   fulldump_general_schema_fini(self);

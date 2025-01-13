@@ -1,0 +1,6 @@
+#ifndef FULLDUMP_CONSTS_H
+#define FULLDUMP_CONSTS_H
+
+#define MAXNAMESIZE 64
+
+#endif /* FULLDUMP_CONSTS_H */

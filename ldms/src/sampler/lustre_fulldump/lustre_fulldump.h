@@ -8,18 +8,18 @@
 #ifndef __LUSTRE_FULLDUMP_H
 #define __LUSTRE_FULLDUMP_H
 
-#include <sys/queue.h>
+// #include <sys/queue.h>
 // #include "jobid_helper.h"
-#include "comp_id_helper.h"
-#include "ldms.h"
-#include "ldmsd.h"
-#include "sampler_base.h"
+// #include "comp_id_helper.h"
+// #include "ldms.h"
+// #include "ldmsd.h"
+// #include "sampler_base.h"
 
-#define SAMP "lustre_fulldump"
+#include "consts.h"
 
-#define MAXNAMESIZE 64
+#include "lustre_fulldump_context.h"
 
-extern ldmsd_msg_log_f log_fn;
+extern char *SAMP;
 
 /** @brief fulldump_ctxt is the context for the fulldump sampler */
 typedef struct fulldump_ctxt {
@@ -53,5 +53,7 @@ typedef struct fulldump_sub_ctxt {
   int (*sample)(void *self);
   int (*term)(void *self);
 } *fulldump_sub_ctxt_p;
+extern ldmsd_msg_log_f log_fn;
+
 
 #endif /* __LUSTRE_FULLDUMP_H */
